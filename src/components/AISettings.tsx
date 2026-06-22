@@ -337,6 +337,18 @@ export default function AISettings({
     const apiKey = provider === '9router-public'
       ? `${saved9Router.url || ''} ${saved9Router.key || ''}`.trim()
       : undefined;
+    if (provider === '9router-public' && !saved9Router.url) {
+      toast.error("Click update and enter the 9Router Public URL once.");
+      setProviders((prev) => ({
+        ...prev,
+        [provider]: {
+          ...prev[provider],
+          status: (localProviderModels[provider] || []).length > 0 ? "connected" : prev[provider].status,
+          validating: false,
+        },
+      }));
+      return;
+    }
 
     const checkingToast = toast.loading(`Pinging ${PROVIDER_INFO[provider]?.label} (model: ${targetModel || 'default'})...`);
     try {
@@ -379,7 +391,7 @@ export default function AISettings({
           ...prev,
           [provider]: {
             ...prev[provider],
-            status: "has_key",
+            status: provider === '9router-public' && (localProviderModels[provider] || []).length > 0 ? "connected" : "has_key",
             validating: false,
           },
         }));
@@ -391,6 +403,7 @@ export default function AISettings({
         ...prev,
         [provider]: {
           ...prev[provider],
+          status: provider === '9router-public' && (localProviderModels[provider] || []).length > 0 ? "connected" : prev[provider].status,
           validating: false,
         },
       }));

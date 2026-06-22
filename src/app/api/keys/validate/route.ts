@@ -13,6 +13,9 @@ export async function POST(request: Request) {
     let apiKey = api_key ? api_key.trim() : '';
     const publicInput = p === '9router-public' ? parse9RouterPublicInput(apiKey) : null;
     if (publicInput) apiKey = publicInput.key;
+    if (publicInput?.url) {
+      process.env.NINE_ROUTER_PUBLIC_URL = publicInput.url;
+    }
 
     if (!apiKey) {
       if (p === '9router') {
