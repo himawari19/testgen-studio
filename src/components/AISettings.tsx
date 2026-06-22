@@ -7,8 +7,6 @@ import toast from "react-hot-toast";
 import { Settings, X, RefreshCw, ChevronDown, ExternalLink, Key, Check } from "lucide-react";
 
 const API_URL = "";
-// ponytail: 9Router is a local gateway — only relevant when running on localhost
-const IS_LOCAL = typeof window !== "undefined" && window.location.hostname === "localhost";
 
 interface AISettingsProps {
   onProviderChange: (provider: string, model: string) => void;
@@ -95,7 +93,12 @@ export default function AISettings({
   inline = false,
 }: AISettingsProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isLocal, setIsLocal] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setIsLocal(window.location.hostname === "localhost");
+  }, []);
 
   const [providers, setProviders] = useState<Record<string, ProviderState>>({
     openai: { status: "disconnected", keyInput: "", showInput: false, validating: false },
@@ -532,7 +535,7 @@ export default function AISettings({
   if (inline) {
     return (
       <div className="space-y-3">
-        {Object.entries(PROVIDER_INFO).filter(([p]) => p !== '9router' || IS_LOCAL).map(([provider, info]) => {
+        {Object.entries(PROVIDER_INFO).filter(([p]) => p !== '9router' || isLocal).map(([provider, info]) => {
           const state = providers[provider] || { status: "disconnected", keyInput: "", showInput: false, validating: false };
           const isActive = selectedProvider === provider && state?.status === "connected";
 
@@ -815,7 +818,7 @@ export default function AISettings({
           </div>
 
           <div className="space-y-2">
-            {Object.entries(PROVIDER_INFO).filter(([p]) => p !== '9router' || IS_LOCAL).map(([provider, info]) => {
+            {Object.entries(PROVIDER_INFO).filter(([p]) => p !== '9router' || isLocal).map(([provider, info]) => {
               const state = providers[provider] || { status: "disconnected", keyInput: "", showInput: false, validating: false };
               const isActive = selectedProvider === provider && state?.status === "connected";
 
