@@ -110,6 +110,21 @@ export default function AISettings({
   });
   const [localProviderModels, setLocalProviderModels] = useState<Record<string, string[]>>({});
 
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('9router_public') || '{}');
+      if (Array.isArray(saved.models) && saved.models.length > 0) {
+        setLocalProviderModels((prev) => ({ ...prev, '9router-public': saved.models }));
+        setProviders((prev) => ({
+          ...prev,
+          '9router-public': { ...prev['9router-public'], status: 'connected', showInput: false },
+        }));
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
   // Sync with modelsData whenever it changes
   useEffect(() => {
     if (modelsData) {
@@ -117,13 +132,18 @@ export default function AISettings({
         const updated = { ...prev };
         for (const [provider, status] of Object.entries(modelsData.status)) {
           if (updated[provider]) {
-            updated[provider] = { ...updated[provider], status };
+            const hasLocalModels = (localProviderModels[provider] || []).length > 0;
+            updated[provider] = {
+              ...updated[provider],
+              status: hasLocalModels ? "connected" : status,
+              showInput: hasLocalModels ? false : updated[provider].showInput,
+            };
           }
         }
         return updated;
       });
     }
-  }, [modelsData]);
+  }, [modelsData, localProviderModels]);
 
   // Close panel when clicking outside
   useEffect(() => {
@@ -179,6 +199,7 @@ export default function AISettings({
         localStorage.setItem('9router_public', JSON.stringify({
           url: state.urlInput || '',
           key: state.keyInput || '',
+          models: validatedModels,
         }));
       }
       if (validatedModels.length > 0) {
@@ -204,7 +225,7 @@ export default function AISettings({
       if (validatedModels.length > 0) {
         setProviders((prev) => ({
           ...prev,
-          [provider]: { ...prev[provider], status: "connected" },
+          [provider]: { ...prev[provider], status: "connected", showInput: false, validating: false },
         }));
         onProviderChange(provider, validatedModels[0]);
       }
