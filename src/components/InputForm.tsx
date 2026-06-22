@@ -222,6 +222,9 @@ export default function InputForm({
     const allUrls = [ensureProtocol(url), ...extraUrls.map(ensureProtocol)].filter(Boolean);
 
     const streamGenerate = async (singleUrl: string): Promise<boolean> => {
+      const routerPublic = aiProvider === '9router-public'
+        ? JSON.parse(localStorage.getItem('9router_public') || '{}')
+        : {};
       const response = await fetch(`${API_URL}/api/generate/stream`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -235,6 +238,8 @@ export default function InputForm({
           fast_mode: fastMode,
           generation_mode: generationMode,
           output_mode: outputMode,
+          nine_router_public_url: routerPublic.url || '',
+          nine_router_public_key: routerPublic.key || '',
           ...(auth ? { auth } : {}),
         }),
         signal: abortController.signal,

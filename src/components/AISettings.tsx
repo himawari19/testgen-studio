@@ -108,6 +108,7 @@ export default function AISettings({
     '9router': { status: "disconnected", keyInput: "", showInput: false, validating: false },
     '9router-public': { status: "disconnected", keyInput: "", showInput: false, validating: false },
   });
+  const [localProviderModels, setLocalProviderModels] = useState<Record<string, string[]>>({});
 
   // Sync with modelsData whenever it changes
   useEffect(() => {
@@ -173,6 +174,18 @@ export default function AISettings({
         api_key: input,
       });
 
+      const validatedModels = Array.isArray(validateRes.data.models) ? validateRes.data.models : [];
+      if (provider === '9router-public') {
+        localStorage.setItem('9router_public', JSON.stringify({
+          url: state.urlInput || '',
+          key: state.keyInput || '',
+        }));
+      }
+      if (validatedModels.length > 0) {
+        setLocalProviderModels((prev) => ({ ...prev, [provider]: validatedModels }));
+        onProviderChange(provider, validatedModels[0]);
+      }
+
       const tokensInfo = validateRes.data.tokens !== undefined ? ` (tokens: ${validateRes.data.tokens})` : '';
       toast.success(`${PROVIDER_INFO[provider]?.label} connected successfully${tokensInfo}`);
 
@@ -188,6 +201,13 @@ export default function AISettings({
       }));
 
       await refreshModels();
+      if (validatedModels.length > 0) {
+        setProviders((prev) => ({
+          ...prev,
+          [provider]: { ...prev[provider], status: "connected" },
+        }));
+        onProviderChange(provider, validatedModels[0]);
+      }
     } catch (err: any) {
       toast.error(err.response?.data?.detail || "Failed to validate key");
       setProviders((prev) => ({
@@ -542,7 +562,7 @@ export default function AISettings({
               {/* Key Input */}
               {provider !== '9router' && state.showInput && (
                 <div className="mt-3 pt-3 border-t border-slate-100">
-                  <div className="flex gap-2">
+                  <div className={provider === '9router-public' ? "space-y-2" : "flex gap-2"}>
                     {provider === '9router-public' && (
                       <input
                         type="text"
@@ -553,12 +573,12 @@ export default function AISettings({
                             [provider]: { ...prev[provider], urlInput: e.target.value },
                           }))
                         }
-                        placeholder="https://9router-laptop.lotus.my.id/v1"
+                        placeholder="https://your-domain.com/v1"
                         className="input-field text-sm font-mono py-2"
                       />
                     )}
                     <input
-                      type={provider === '9router-public' ? "text" : "password"}
+                      type="password"
                       value={state.keyInput}
                       onChange={(e) =>
                         setProviders((prev) => ({
@@ -579,7 +599,7 @@ export default function AISettings({
                       type="button"
                       onClick={() => handleConnectKey(provider)}
                       disabled={state.validating || !(provider === '9router-public' ? (state.urlInput || state.keyInput || '').trim() : state.keyInput.trim())}
-                      className="btn-primary text-xs whitespace-nowrap px-3"
+                      className={provider === '9router-public' ? "btn-primary text-xs whitespace-nowrap px-3 w-full" : "btn-primary text-xs whitespace-nowrap px-3"}
                     >
                       {state.validating ? "..." : "Connect"}
                     </button>
@@ -596,7 +616,7 @@ export default function AISettings({
               )}
 
               {/* Model Selector for active provider */}
-              {isActive && modelsData && (
+              {isActive && (localProviderModels[provider] || modelsData?.providers[provider]) && (
                 <div className="mt-3 pt-3 border-t border-indigo-100">
                   <label className="text-xs font-medium text-slate-600 block mb-1.5">
                     Model
@@ -607,7 +627,7 @@ export default function AISettings({
                     className="input-field text-sm py-2"
                     aria-label={`Select model for ${info.label}`}
                   >
-                    {modelsData.providers[provider]?.map((model) => (
+                    {(localProviderModels[provider] || modelsData?.providers[provider] || []).map((model) => (
                       <option key={model} value={model}>
                         {model}
                       </option>
@@ -814,7 +834,7 @@ export default function AISettings({
                   {/* Key Input */}
                   {provider !== '9router' && state.showInput && (
                     <div className="mt-3 pt-3 border-t border-slate-100">
-                      <div className="flex gap-2">
+                      <div className={provider === '9router-public' ? "space-y-2" : "flex gap-2"}>
                         {provider === '9router-public' && (
                           <input
                             type="text"
@@ -825,12 +845,12 @@ export default function AISettings({
                                 [provider]: { ...prev[provider], urlInput: e.target.value },
                               }))
                             }
-                            placeholder="https://9router-laptop.lotus.my.id/v1"
+                            placeholder="https://your-domain.com/v1"
                             className="input-field text-sm font-mono py-2"
                           />
                         )}
                         <input
-                          type={provider === '9router-public' ? "text" : "password"}
+                          type="password"
                           value={state.keyInput}
                           onChange={(e) =>
                             setProviders((prev) => ({
@@ -851,7 +871,7 @@ export default function AISettings({
                           type="button"
                           onClick={() => handleConnectKey(provider)}
                           disabled={state.validating || !(provider === '9router-public' ? (state.urlInput || state.keyInput || '').trim() : state.keyInput.trim())}
-                          className="btn-primary text-xs whitespace-nowrap px-3"
+                          className={provider === '9router-public' ? "btn-primary text-xs whitespace-nowrap px-3 w-full" : "btn-primary text-xs whitespace-nowrap px-3"}
                         >
                           {state.validating ? "..." : "Connect"}
                         </button>
@@ -868,7 +888,7 @@ export default function AISettings({
                   )}
 
                   {/* Model Selector for active provider */}
-                  {isActive && modelsData && (
+                  {isActive && (localProviderModels[provider] || modelsData?.providers[provider]) && (
                     <div className="mt-3 pt-3 border-t border-indigo-100">
                       <label className="text-xs font-medium text-slate-600 block mb-1.5">
                         Model
@@ -879,7 +899,7 @@ export default function AISettings({
                         className="input-field text-sm py-2"
                         aria-label={`Select model for ${info.label}`}
                       >
-                        {modelsData.providers[provider]?.map((model) => (
+                        {(localProviderModels[provider] || modelsData?.providers[provider] || []).map((model) => (
                           <option key={model} value={model}>
                             {model}
                           </option>

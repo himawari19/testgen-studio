@@ -41,13 +41,15 @@ export async function POST(request: Request) {
 
     // Direct test call
     let testModel = model;
+    let models: string[] = [];
     if (!testModel && p === '9router') {
       // ponytail: dynamically fetch first available model from local 9Router config to avoid hardcoding fallback
       try {
         const res = await fetch('http://127.0.0.1:20128/v1/models');
         if (res.ok) {
           const data = await res.json();
-          testModel = data?.data?.[0]?.id || '';
+          models = Array.isArray(data?.data) ? data.data.map((m: any) => m.id).filter(Boolean) : [];
+          testModel = models[0] || '';
         }
       } catch (err) {
         console.warn('Failed to fetch dynamic 9Router models:', err);
@@ -68,7 +70,8 @@ export async function POST(request: Request) {
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
-        testModel = data?.data?.[0]?.id || '';
+        models = Array.isArray(data?.data) ? data.data.map((m: any) => m.id).filter(Boolean) : [];
+        testModel = models[0] || '';
       } catch (err: any) {
         throw new Error(`Cannot reach 9Router at ${tunnelUrl}: ${err.message}`);
       }
@@ -84,7 +87,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ 
       valid: true, 
       message: 'API key is valid and connected',
-      tokens: usage.totalTokens 
+      tokens: usage.totalTokens,
+      model: testModel,
+      models,
     });
   } catch (err: any) {
     return NextResponse.json({ valid: false, message: `Validation failed: ${err.message}` });

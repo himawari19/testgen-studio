@@ -74,7 +74,7 @@ function formatTestCaseTable(testCases: any[]): string {
 
 export async function POST(request: Request) {
   try {
-    const { url, user_context, ai_provider, ai_model, auth, framework, language, fast_mode, generation_mode, output_mode } = await request.json();
+    const { url, user_context, ai_provider, ai_model, auth, framework, language, fast_mode, generation_mode, output_mode, nine_router_public_url, nine_router_public_key } = await request.json();
     const modeMinTC: Record<string, number> = { quick: 10, standard: 30, thorough: 50 };
     const minTestCases = modeMinTC[generation_mode] ?? 10;
     const now = new Date();
@@ -105,9 +105,12 @@ export async function POST(request: Request) {
             alibaba: 'ALIBABA_API_KEY',
           };
           const envVar = envMap[p] || 'OPENAI_API_KEY';
+          if (p === '9router-public' && nine_router_public_url) {
+            process.env.NINE_ROUTER_PUBLIC_URL = String(nine_router_public_url).replace(/\/v1\/?$/, '').replace(/\/$/, '');
+          }
           // ponytail: 9router uses local key, 9router-public uses stored public API key
           const apiKey = p === '9router' ? '9router-local-key'
-            : p === '9router-public' ? (loadKeys().keys['9router-public'] || process.env.NINE_ROUTER_PUBLIC_API_KEY || '')
+            : p === '9router-public' ? (nine_router_public_key || loadKeys().keys['9router-public'] || process.env.NINE_ROUTER_PUBLIC_API_KEY || '')
             : (process.env[envVar] || '');
 
           // cases-only = planning only, fast model is sufficient; fast_mode also forces fast model
