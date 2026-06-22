@@ -100,9 +100,9 @@ export default function InputForm({
   ] as const;
 
   const OUTPUT_MODES = [
-    { id: 'both',    label: 'Cases + Scripts', sub: 'Full output',      title: 'Generate test cases and automation scripts' },
     { id: 'cases',   label: 'Cases Only',      sub: 'Planning only',    title: 'Only generate test case scenarios - no scripts (fastest)' },
     { id: 'scripts', label: 'Scripts Only',    sub: 'Code only',        title: 'Generate scripts only - test case table hidden' },
+    { id: 'both',    label: 'Cases + Scripts', sub: 'Full output',      title: 'Generate test cases and automation scripts' },
   ] as const;
 
   const handleFrameworkChange = (fw: string) => {
@@ -380,47 +380,6 @@ export default function InputForm({
             The more specific your description, the better the generated test cases.
           </p>
         </div>
-
-        {/* Framework & Language Selection */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2 p-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800">
-          <div>
-            <label htmlFor="framework-select" className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2 uppercase tracking-wider">
-              <Code2 className="w-3.5 h-3.5 text-indigo-500" />
-              Target Framework
-            </label>
-            <select
-              id="framework-select"
-              value={framework}
-              onChange={(e) => handleFrameworkChange(e.target.value)}
-              disabled={isSubmitting}
-              className="input-field text-sm py-2 font-medium bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
-            >
-              <option value="playwright">Playwright</option>
-              <option value="cypress">Cypress</option>
-              <option value="selenium">Selenium</option>
-            </select>
-          </div>
-
-          <div>
-            <label htmlFor="language-select" className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2 uppercase tracking-wider">
-              <Code2 className="w-3.5 h-3.5 text-indigo-500" />
-              Programming Language
-            </label>
-            <select
-              id="language-select"
-              value={language}
-              onChange={(e) => setLanguage(e.target.value)}
-              disabled={isSubmitting}
-              className="input-field text-sm py-2 font-medium bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
-            >
-              {getAvailableLanguages(framework).map((lang) => (
-                <option key={lang.id} value={lang.id}>
-                  {lang.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
       </div>
 
       {/* Output Mode */}
@@ -449,6 +408,48 @@ export default function InputForm({
           ))}
         </div>
       </div>
+
+      {/* Framework & Language — only when scripts are involved */}
+      {outputMode !== 'cases' && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 p-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800">
+          <div>
+            <label htmlFor="framework-select" className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2 uppercase tracking-wider">
+              <Code2 className="w-3.5 h-3.5 text-indigo-500" />
+              Target Framework
+            </label>
+            <select
+              id="framework-select"
+              value={framework}
+              onChange={(e) => handleFrameworkChange(e.target.value)}
+              disabled={isSubmitting}
+              className="input-field text-sm py-2 font-medium bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+            >
+              <option value="playwright">Playwright</option>
+              <option value="cypress">Cypress</option>
+              <option value="selenium">Selenium</option>
+            </select>
+          </div>
+          <div>
+            <label htmlFor="language-select" className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2 uppercase tracking-wider">
+              <Code2 className="w-3.5 h-3.5 text-indigo-500" />
+              Programming Language
+            </label>
+            <select
+              id="language-select"
+              value={language}
+              onChange={(e) => setLanguage(e.target.value)}
+              disabled={isSubmitting}
+              className="input-field text-sm py-2 font-medium bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+            >
+              {getAvailableLanguages(framework).map((lang) => (
+                <option key={lang.id} value={lang.id}>
+                  {lang.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
 
       {/* Generation Mode */}
       <div className="mt-4">
