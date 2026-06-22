@@ -210,15 +210,12 @@ export async function POST(request: Request) {
           const id = crypto.randomUUID();
           const now = new Date().toISOString();
 
-          const db = await getDB();
-          await db.run(
-            `INSERT INTO history
+          const sql = getDB();
+          await sql`INSERT INTO history
              (id, url, user_context, page_title, elements_found, ai_provider, ai_model,
               test_case_table, test_cases_json, scripts_json, scripts_count, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [id, url, effectiveContext, pageData.title, pageData.elements.length, p, ai_model || '',
-             table, JSON.stringify(testCases), JSON.stringify(scripts), scripts.length, now, now]
-          );
+             VALUES (${id}, ${url}, ${effectiveContext}, ${pageData.title}, ${pageData.elements.length}, ${p}, ${ai_model || ''},
+              ${table}, ${JSON.stringify(testCases)}, ${JSON.stringify(scripts)}, ${scripts.length}, ${now}, ${now})`;
 
           sendEvent('complete', 'Generation complete!', {
             result: {

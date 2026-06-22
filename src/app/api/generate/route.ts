@@ -66,15 +66,12 @@ export async function POST(request: Request) {
       }
     }
 
-    const db = await getDB();
-    await db.run(
-      `INSERT INTO history 
+    const sql = getDB();
+    await sql`INSERT INTO history
        (id, url, user_context, page_title, elements_found, ai_provider, ai_model,
         test_case_table, scripts_json, scripts_count, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [id, url, user_context, pageData.title, pageData.elements.length, p, ai_model || '',
-       table, JSON.stringify(scripts), scripts.length, now, now]
-    );
+       VALUES (${id}, ${url}, ${user_context}, ${pageData.title}, ${pageData.elements.length}, ${p}, ${ai_model || ''},
+        ${table}, ${JSON.stringify(scripts)}, ${scripts.length}, ${now}, ${now})`;
 
     return NextResponse.json({
       test_case_table: table,

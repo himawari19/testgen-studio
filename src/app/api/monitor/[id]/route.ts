@@ -6,10 +6,10 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const db = await getDB();
-    const result = await db.run('DELETE FROM monitored_urls WHERE id = ?', params.id);
+    const sql = getDB();
+    const result = await sql`DELETE FROM monitored_urls WHERE id = ${params.id} RETURNING id`;
 
-    if ((result.changes || 0) === 0) {
+    if (!result || result.length === 0) {
       return NextResponse.json({ detail: 'Monitor record not found' }, { status: 404 });
     }
 

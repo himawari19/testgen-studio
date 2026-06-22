@@ -5,11 +5,10 @@ import crypto from 'crypto';
 
 export async function GET() {
   try {
-    const db = await getDB();
-    const items = await db.all(
-      `SELECT id, url, last_checked, selectors_total, selectors_broken, status, created_at 
-       FROM monitored_urls ORDER BY created_at DESC`
-    );
+    const sql = getDB();
+    const items = await sql`
+      SELECT id, url, last_checked, selectors_total, selectors_broken, status, created_at
+      FROM monitored_urls ORDER BY created_at DESC`;
     return NextResponse.json({ items: items || [] });
   } catch (err: any) {
     return NextResponse.json({ detail: err.message }, { status: 500 });
@@ -35,13 +34,18 @@ export async function POST(request: Request) {
     const now = new Date().toISOString();
     const selectorsJSON = JSON.stringify(selectors);
 
-    const db = await getDB();
-    await db.run(
-      `INSERT OR REPLACE INTO monitored_urls
+    const sql = getDB();
+    await sql`
+      INSERT INTO monitored_urls
        (id, url, last_checked, selectors_json, selectors_total, selectors_broken, status, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, 0, 'healthy', ?, ?)`,
-      [id, url, now, selectorsJSON, selectors.length, now, now]
-    );
+       VALUES (${id}, ${url}, ${now}, ${selectorsJSON}, ${selectors.length}, ${0}, ${'healthy'}, ${now}, ${now})
+       ON CONFLICT (url) DO UPDATE
+         SET last_checked = EXCLUDED.last_checked,
+             selectors_json = EXCLUDED.selectors_json,
+             selectors_total = EXCLUDED.selectors_total,
+             selectors_broken = EXCLUDED.selectors_broken,
+             status = EXCLUDED.status,
+             updated_at = EXCLUDED.updated_at`;
 
     return NextResponse.json({
       success: true,

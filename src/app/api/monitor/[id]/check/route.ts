@@ -8,8 +8,9 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const db = await getDB();
-    const record = await db.get('SELECT * FROM monitored_urls WHERE id = ?', params.id);
+    const sql = getDB();
+    const rows = await sql`SELECT * FROM monitored_urls WHERE id = ${params.id}`;
+    const record = rows[0] ?? null;
 
     if (!record) {
       return NextResponse.json({ detail: 'Monitor record not found' }, { status: 404 });
@@ -42,28 +43,19 @@ export async function POST(
     const now = new Date().toISOString();
     const updatedSelectorsJSON = JSON.stringify(updatedSelectors);
 
-    // Update in transaction
-    await db.run('BEGIN TRANSACTION');
-    try {
-      await db.run(
-        `UPDATE monitored_urls
-         SET last_checked = ?, selectors_json = ?, selectors_total = ?, selectors_broken = ?, status = ?, updated_at = ?
-         WHERE id = ?`,
-        [now, updatedSelectorsJSON, storedSelectors.length, brokenCount, status, now, params.id]
-      );
+    // Sequential queries replacing BEGIN/COMMIT transaction (Neon HTTP driver doesn't support transactions)
+    await sql`
+      UPDATE monitored_urls
+      SET last_checked = ${now}, selectors_json = ${updatedSelectorsJSON},
+          selectors_total = ${storedSelectors.length}, selectors_broken = ${brokenCount},
+          status = ${status}, updated_at = ${now}
+      WHERE id = ${params.id}`;
 
-      const snapshotID = crypto.randomUUID();
-      await db.run(
-        `INSERT INTO monitor_snapshots
-         (id, monitor_id, selectors_json, selectors_total, selectors_broken, status, checked_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [snapshotID, params.id, updatedSelectorsJSON, storedSelectors.length, brokenCount, status, now]
-      );
-      await db.run('COMMIT');
-    } catch (txErr) {
-      await db.run('ROLLBACK');
-      throw txErr;
-    }
+    const snapshotID = crypto.randomUUID();
+    await sql`
+      INSERT INTO monitor_snapshots
+       (id, monitor_id, selectors_json, selectors_total, selectors_broken, status, checked_at)
+       VALUES (${snapshotID}, ${params.id}, ${updatedSelectorsJSON}, ${storedSelectors.length}, ${brokenCount}, ${status}, ${now})`;
 
     return NextResponse.json({
       success: true,

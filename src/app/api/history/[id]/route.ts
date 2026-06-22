@@ -8,8 +8,9 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const db = await getDB();
-    const record = await db.get('SELECT * FROM history WHERE id = ?', params.id);
+    const sql = getDB();
+    const rows = await sql`SELECT * FROM history WHERE id = ${params.id}`;
+    const record = rows[0] ?? null;
 
     if (!record) {
       return NextResponse.json({ detail: 'History record not found' }, { status: 404 });
@@ -33,8 +34,9 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const db = await getDB();
-    const record = await db.get('SELECT scripts_json FROM history WHERE id = ?', params.id);
+    const sql = getDB();
+    const rows = await sql`SELECT scripts_json FROM history WHERE id = ${params.id}`;
+    const record = rows[0] ?? null;
     if (!record) return NextResponse.json({ detail: 'History record not found' }, { status: 404 });
 
     // Delete files from disk
@@ -50,7 +52,7 @@ export async function DELETE(
       try { await fs.promises.rmdir(folder); } catch {}
     }
 
-    await db.run('DELETE FROM history WHERE id = ?', params.id);
+    await sql`DELETE FROM history WHERE id = ${params.id}`;
     return NextResponse.json({ success: true });
   } catch (err: any) {
     return NextResponse.json({ detail: err.message }, { status: 500 });
