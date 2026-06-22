@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import AISettings from "@/components/AISettings";
-import { Moon, Sun, Keyboard, FileText } from "lucide-react";
+import { Keyboard, FileText } from "lucide-react";
 import toast from "react-hot-toast";
 import { ModelsResponse } from "@/types";
 
@@ -21,7 +21,6 @@ export default function SettingsPage({
   modelsData,
   refreshModels,
 }: SettingsPageProps) {
-  const [darkMode, setDarkMode] = useState(false);
   const [customPrompt, setCustomPrompt] = useState("");
   const [showShortcuts, setShowShortcuts] = useState(false);
 
@@ -31,7 +30,6 @@ export default function SettingsPage({
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        setDarkMode(parsed.darkMode || false);
         setCustomPrompt(parsed.customPrompt || "");
       } catch {
         // ignore
@@ -44,17 +42,6 @@ export default function SettingsPage({
     const current = saved ? JSON.parse(saved) : {};
     current[key] = value;
     localStorage.setItem("selectorhub_settings", JSON.stringify(current));
-  };
-
-  const handleDarkMode = (enabled: boolean) => {
-    setDarkMode(enabled);
-    saveSettings("darkMode", enabled);
-    if (enabled) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-    toast.success(enabled ? "Dark mode enabled" : "Light mode enabled");
   };
 
   const handleSavePrompt = () => {
@@ -77,7 +64,7 @@ export default function SettingsPage({
       <div className="mb-6 lg:mb-8">
         <h2 className="text-xl lg:text-2xl font-semibold text-slate-900 mb-2">Settings</h2>
         <p className="text-sm lg:text-base text-slate-500 max-w-xl">
-          Manage your AI providers, appearance, and application preferences.
+          Manage your AI providers and application preferences.
         </p>
       </div>
 
@@ -121,38 +108,6 @@ export default function SettingsPage({
               className="btn-primary text-xs"
             >
               Save Prompt
-            </button>
-          </div>
-        </div>
-
-        {/* Appearance */}
-        <div className="card p-4 sm:p-6">
-          <div className="flex items-center gap-2 mb-1">
-            {darkMode ? <Moon className="w-4 h-4 text-slate-500" /> : <Sun className="w-4 h-4 text-slate-500" />}
-            <h3 className="text-base font-semibold text-slate-800">Appearance</h3>
-          </div>
-          <p className="text-sm text-slate-500 mb-4">
-            Customize the look and feel of the application.
-          </p>
-          <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-            <div>
-              <p className="text-sm font-medium text-slate-700">Dark Mode</p>
-              <p className="text-xs text-slate-500">Switch between light and dark themes</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => handleDarkMode(!darkMode)}
-              className={`relative w-11 h-6 rounded-full transition-colors ${
-                darkMode ? "bg-indigo-600" : "bg-slate-300"
-              }`}
-              aria-label={darkMode ? "Disable dark mode" : "Enable dark mode"}
-              title={darkMode ? "Disable dark mode" : "Enable dark mode"}
-            >
-              <span
-                className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
-                  darkMode ? "translate-x-5" : "translate-x-0"
-                }`}
-              />
             </button>
           </div>
         </div>

@@ -1,11 +1,14 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useSession, signIn } from "next-auth/react";
 import { GenerateResponse } from "@/types";
 import { getApiKey } from "@/lib/keys";
 import { Send, Globe, MessageSquare, Loader2, Lock, ChevronDown, Code2, Zap, Plus, X } from "lucide-react";
 
 const API_URL = "";
+const GUEST_LIMIT = 5;
+const GUEST_COUNT_KEY = "testgen_guest_generations";
 
 interface AuthConfig {
   auth_type: string | null;
@@ -87,6 +90,10 @@ export default function InputForm({
   const [authFormFields, setAuthFormFields] = useState("");
   const abortRef = useRef<AbortController | null>(null);
 
+  const { status: sessionStatus } = useSession();
+  const isAuthed = sessionStatus === "authenticated";
+  const [showSignInPrompt, setShowSignInPrompt] = useState(false);
+
   // Framework & Language State
   const [framework, setFramework] = useState("playwright");
   const [language, setLanguage] = useState("typescript");
@@ -160,6 +167,15 @@ export default function InputForm({
     if (!aiProvider || !aiModel) {
       onError("Please select your AI Provider and Model from 'AI Settings' (top-right) first.");
       return;
+    }
+
+    // ponytail: guests get GUEST_LIMIT free generations tracked in localStorage; then sign-in is forced
+    if (!isAuthed) {
+      const used = parseInt(localStorage.getItem(GUEST_COUNT_KEY) || "0", 10);
+      if (used >= GUEST_LIMIT) {
+        setShowSignInPrompt(true);
+        return;
+      }
     }
 
     setIsSubmitting(true);
@@ -283,6 +299,11 @@ export default function InputForm({
         if (allUrls.length > 1) onStatus(`Processing URL ${i + 1}/${allUrls.length}...`, "analyzing");
         const ok = await streamGenerate(allUrls[i]);
         if (!ok) break;
+        // count each successful guest generation toward the free limit
+        if (!isAuthed) {
+          const used = parseInt(localStorage.getItem(GUEST_COUNT_KEY) || "0", 10) + 1;
+          localStorage.setItem(GUEST_COUNT_KEY, String(used));
+        }
       }
       onStatus("Generation complete!", "complete");
     } catch (err: any) {
@@ -307,6 +328,42 @@ export default function InputForm({
 
   return (
     <form onSubmit={handleSubmit} className="card p-4 sm:p-6">
+      {showSignInPrompt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-7 max-w-sm w-full shadow-2xl text-center relative">
+            <button
+              type="button"
+              onClick={() => setShowSignInPrompt(false)}
+              className="absolute top-3 right-3 p-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 transition"
+              aria-label="Close"
+            >
+              <X className="w-4 h-4 text-slate-400" />
+            </button>
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center mb-4">
+              <Lock className="w-7 h-7 text-indigo-600" />
+            </div>
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+              You&apos;ve used your {GUEST_LIMIT} free generations
+            </h3>
+            <p className="text-sm text-slate-500 mt-1.5 mb-5">
+              Sign in with Google to keep generating, save your history, and sync across devices.
+            </p>
+            <button
+              type="button"
+              onClick={() => signIn("google", { callbackUrl: "/app" })}
+              className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 transition text-sm font-medium text-slate-700 dark:text-slate-200"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" aria-hidden="true">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.27-4.74 3.27-8.1z" />
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23z" />
+                <path fill="#FBBC05" d="M5.84 14.1a6.6 6.6 0 0 1 0-4.2V7.06H2.18a11 11 0 0 0 0 9.88l3.66-2.84z" />
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84C6.71 7.31 9.14 5.38 12 5.38z" />
+              </svg>
+              Sign in with Google
+            </button>
+          </div>
+        </div>
+      )}
       <div className="grid gap-4 sm:gap-5">
         {/* URL Input */}
         <div>

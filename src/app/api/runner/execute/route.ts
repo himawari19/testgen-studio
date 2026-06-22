@@ -20,6 +20,14 @@ function findFirstPng(dir: string): string | null {
 }
 
 export async function POST(request: Request) {
+  // ponytail: pytest+playwright runner only exists locally — Vercel has no Python.
+  if (process.env.VERCEL) {
+    return NextResponse.json(
+      { detail: 'Test Runner is only available when running locally (needs Python + Playwright).' },
+      { status: 501 }
+    );
+  }
+
   const { script_content, url } = await request.json();
   if (!script_content || !url) {
     return NextResponse.json({ detail: 'Script content and URL are required' }, { status: 400 });

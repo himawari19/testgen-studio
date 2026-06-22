@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { ChevronDown, Play, Loader2, CheckCircle2, XCircle } from "lucide-react";
 import { TestCase, ScriptFile } from "@/types";
+import { useIsLocal } from "@/lib/useIsLocal";
 
 function parseMdRow(rowStr: string): string[] {
   const parts = rowStr.split("|");
@@ -131,6 +132,7 @@ export default function TestCaseTable({ markdown, testCases, scripts, url }: Tes
   const [priorityFilter, setPriorityFilter] = useState<typeof PRIORITY_OPTS[number]>("ALL");
   const [runStatus, setRunStatus]           = useState<Record<number, RunState>>({});
   const [isRunning, setIsRunning]           = useState(false);
+  const isLocal = useIsLocal();
 
   const cases = useMemo(
     () => (testCases && testCases.length > 0) ? testCases : parseMarkdownToTestCases(markdown),
@@ -216,7 +218,7 @@ export default function TestCaseTable({ markdown, testCases, scripts, url }: Tes
             ({filtered.length}{filtered.length !== cases.length ? `/${cases.length}` : ""} cases)
           </span>
         </h3>
-        {scripts && scripts.length > 0 && (
+        {isLocal && scripts && scripts.length > 0 && (
           <button
             type="button"
             onClick={runAll}
@@ -268,7 +270,7 @@ export default function TestCaseTable({ markdown, testCases, scripts, url }: Tes
               {["#", "Test Case ID", "Test Case Name", "Type", "Pre Condition", "Test Steps", "Expected Result", "Actual Result", "Status", "Priority", "Evidence"].map(h => (
                 <th key={h} className="px-4 py-3 text-left font-semibold text-slate-600 uppercase tracking-wider whitespace-nowrap">{h}</th>
               ))}
-              {scripts?.length ? <th className="px-4 py-3" /> : null}
+              {isLocal && scripts?.length ? <th className="px-4 py-3" /> : null}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -314,7 +316,7 @@ export default function TestCaseTable({ markdown, testCases, scripts, url }: Tes
                     {rs?.status === "failed"  && <XCircle className="w-4 h-4 text-red-500" />}
                     {!rs && "-"}
                   </td>
-                  {scripts?.length ? (
+                  {isLocal && scripts?.length ? (
                     <td className="px-2 py-3">
                       <button
                         type="button"

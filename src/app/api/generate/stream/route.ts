@@ -123,7 +123,7 @@ export async function POST(request: Request) {
             sendEvent('crawling', 'Crawling page and extracting elements...');
             pageData = await crawlPage(url, auth);
             if (!pageData.elements || pageData.elements.length === 0) {
-              sendEvent('error', 'No interactive elements found on this page.');
+              sendEvent('error', 'No interactive elements found. This page may render its content with JavaScript (SPA), which static crawling cannot read — try a server-rendered page or the page that holds the actual form.');
               controller.close();
               return;
             }

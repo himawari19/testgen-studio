@@ -101,19 +101,6 @@ export default function Dashboard() {
       setActivePage(hash);
     }
 
-    // Load dark mode from settings
-    const saved = localStorage.getItem("selectorhub_settings");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (parsed.darkMode) {
-          document.documentElement.classList.add("dark");
-        }
-      } catch {
-        // ignore
-      }
-    }
-
     refreshModels();
   }, [refreshModels]);
 

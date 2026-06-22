@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import {
   Zap,
@@ -51,12 +52,12 @@ export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
           >
             {mobileOpen ? <X className="w-5 h-5 text-slate-600" /> : <Menu className="w-5 h-5 text-slate-600" />}
           </button>
-          <div className="flex items-center gap-2">
+          <Link href="/" className="flex items-center gap-2" aria-label="Back to landing page">
             <div className="w-7 h-7 bg-indigo-600 rounded-md flex items-center justify-center">
               <Layers className="w-4 h-4 text-white" />
             </div>
             <span className="text-sm font-semibold text-slate-900">TestGen Studio</span>
-          </div>
+          </Link>
         </div>
       </div>
 
@@ -75,7 +76,7 @@ export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
         }`}
       >
         {/* Logo */}
-        <div className="flex items-center gap-3 px-4 py-5 border-b border-slate-100">
+        <Link href="/" className="flex items-center gap-3 px-4 py-5 border-b border-slate-100" aria-label="Back to landing page">
           <div className="w-9 h-9 bg-indigo-600 rounded-lg flex items-center justify-center flex-shrink-0">
             <Layers className="w-5 h-5 text-white" />
           </div>
@@ -83,7 +84,7 @@ export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
             <h1 className="text-base font-semibold text-slate-900 leading-tight">TestGen Studio</h1>
             <p className="text-[11px] text-slate-400">Build smarter tests with AI</p>
           </div>
-        </div>
+        </Link>
 
         <nav className="px-3 py-4 space-y-1">
           {NAV_ITEMS.map((item) => {
@@ -116,7 +117,7 @@ export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
         }`}
       >
         {/* Logo */}
-        <div className="flex items-center gap-3 px-4 py-5 border-b border-slate-100">
+        <Link href="/" className="flex items-center gap-3 px-4 py-5 border-b border-slate-100" aria-label="Back to landing page">
           <div className="w-9 h-9 bg-indigo-600 rounded-lg flex items-center justify-center flex-shrink-0">
             <Layers className="w-5 h-5 text-white" />
           </div>
@@ -126,7 +127,7 @@ export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
               <p className="text-[11px] text-slate-400">Build smarter tests with AI</p>
             </div>
           )}
-        </div>
+        </Link>
 
         {/* Navigation */}
         <nav className="flex-1 px-3 py-4 space-y-1">

@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { ScriptFile } from "@/types";
+import { useIsLocal } from "@/lib/useIsLocal";
 import toast from "react-hot-toast";
 import axios from "axios";
 import {
@@ -38,6 +39,7 @@ interface TestResult {
 }
 
 export default function ScriptViewer({ scripts }: ScriptViewerProps) {
+  const isLocal = useIsLocal();
   const [activeScript, setActiveScript] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const [testResult, setTestResult] = useState<TestResult | null>(null);
@@ -154,19 +156,21 @@ export default function ScriptViewer({ scripts }: ScriptViewerProps) {
             {current.script_location}
           </span>
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={runTest}
-              disabled={isRunning}
-              className="btn-ghost text-xs flex items-center gap-1.5 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"
-            >
-              {isRunning ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                <Play className="w-3.5 h-3.5" />
-              )}
-              {isRunning ? "Running..." : "Run Test"}
-            </button>
+            {isLocal && (
+              <button
+                type="button"
+                onClick={runTest}
+                disabled={isRunning}
+                className="btn-ghost text-xs flex items-center gap-1.5 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"
+              >
+                {isRunning ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Play className="w-3.5 h-3.5" />
+                )}
+                {isRunning ? "Running..." : "Run Test"}
+              </button>
+            )}
             <button
               type="button"
               onClick={() => copyScript(current.content)}
