@@ -539,23 +539,26 @@ export default function AISettings({
                           type="button"
                           onClick={() => handlePingProvider(provider)}
                           disabled={state.validating}
-                          className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded text-slate-600 bg-slate-100 hover:bg-slate-200 transition"
+                          className="p-1 rounded hover:bg-slate-100 transition"
+                          title="Check connection"
                         >
-                          <RefreshCw className={`w-3 h-3 ${state.validating ? "animate-spin" : ""}`} />
-                          Check Connection
+                          <RefreshCw className={`w-3.5 h-3.5 text-slate-400 ${state.validating ? "animate-spin" : ""}`} />
                         </button>
                       )}
                       <button
                         type="button"
                         onClick={() => handleAddKey(provider)}
-                        className={`flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded transition ${
+                        className={state.status === "has_key"
+                          ? `p-1 rounded transition ${state.showInput ? "hover:bg-red-50" : "hover:bg-slate-100"}`
+                          : `flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded transition ${
                           state.showInput
                             ? "text-red-500 bg-red-50 hover:bg-red-100"
                             : "text-slate-600 bg-slate-100 hover:bg-slate-200"
                         }`}
+                        title={state.showInput ? "Cancel" : state.status === "has_key" ? "Update key" : "Add key"}
                       >
-                        {state.showInput ? <X className="w-3 h-3" /> : <Key className="w-3 h-3" />}
-                        {state.showInput ? "Cancel" : state.status === "has_key" ? "Update Key" : "Add Key"}
+                        {state.showInput ? <X className={state.status === "has_key" ? "w-3.5 h-3.5 text-red-400" : "w-3 h-3"} /> : <Key className={state.status === "has_key" ? "w-3.5 h-3.5 text-slate-400" : "w-3 h-3"} />}
+                        {state.status !== "has_key" && (state.showInput ? "Cancel" : "Add Key")}
                       </button>
                     </div>
                   )}
@@ -816,26 +819,29 @@ export default function AISettings({
                         <div className="flex items-center gap-1">
                           {state.status === "has_key" && (
                             <button
-                              type="button"
-                              onClick={() => handlePingProvider(provider)}
-                              disabled={state.validating}
-                              className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded text-slate-600 bg-slate-100 hover:bg-slate-200 transition"
-                            >
-                              <RefreshCw className={`w-3 h-3 ${state.validating ? "animate-spin" : ""}`} />
-                              Check Connection
-                            </button>
-                          )}
+                          type="button"
+                          onClick={() => handlePingProvider(provider)}
+                          disabled={state.validating}
+                          className="p-1 rounded hover:bg-slate-100 transition"
+                          title="Check connection"
+                        >
+                          <RefreshCw className={`w-3.5 h-3.5 text-slate-400 ${state.validating ? "animate-spin" : ""}`} />
+                        </button>
+                      )}
                           <button
                             type="button"
                             onClick={() => handleAddKey(provider)}
-                            className={`flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded transition ${
+                            className={state.status === "has_key"
+                              ? `p-1 rounded transition ${state.showInput ? "hover:bg-red-50" : "hover:bg-slate-100"}`
+                              : `flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded transition ${
                               state.showInput
                                 ? "text-red-500 bg-red-50 hover:bg-red-100"
                                 : "text-slate-600 bg-slate-100 hover:bg-slate-200"
                             }`}
+                            title={state.showInput ? "Cancel" : state.status === "has_key" ? "Update key" : "Add key"}
                           >
-                            {state.showInput ? <X className="w-3 h-3" /> : <Key className="w-3 h-3" />}
-                            {state.showInput ? "Cancel" : state.status === "has_key" ? "Update Key" : "Add Key"}
+                            {state.showInput ? <X className={state.status === "has_key" ? "w-3.5 h-3.5 text-red-400" : "w-3 h-3"} /> : <Key className={state.status === "has_key" ? "w-3.5 h-3.5 text-slate-400" : "w-3 h-3"} />}
+                            {state.status !== "has_key" && (state.showInput ? "Cancel" : "Add Key")}
                           </button>
                         </div>
                       )}
