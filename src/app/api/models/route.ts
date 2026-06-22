@@ -127,9 +127,10 @@ export async function GET() {
 
   statusMap['9router'] = await ping9Router('http://127.0.0.1:20128', '9router');
 
-  const publicUrl = runtimeData.keys['9router-public'] || process.env.NINE_ROUTER_PUBLIC_URL || '';
+  const publicUrl = (runtimeData.keys['9router-public'] || process.env.NINE_ROUTER_PUBLIC_URL || '')
+    .replace(/\/v1\/?$/, '').replace(/\/$/, '');
   statusMap['9router-public'] = publicUrl
-    ? await ping9Router(publicUrl.replace(/\/$/, ''), '9router-public')
+    ? await ping9Router(publicUrl, '9router-public')
     : 'disconnected';
 
   const configured: Record<string, boolean> = {};

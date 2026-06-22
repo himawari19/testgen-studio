@@ -9,7 +9,10 @@ export async function POST(request: Request) {
     }
 
     const p = provider.toLowerCase().trim();
-    const key = api_key.trim();
+    // normalize 9router-public URL: strip /v1 suffix so consumers can append /v1/... safely
+    const key = p === '9router-public'
+      ? api_key.trim().replace(/\/v1\/?$/, '').replace(/\/$/, '')
+      : api_key.trim();
 
     const data = loadKeys();
     data.keys[p] = key;

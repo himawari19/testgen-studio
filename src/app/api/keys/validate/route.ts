@@ -54,8 +54,9 @@ export async function POST(request: Request) {
         throw new Error('No models/combos are currently configured or running on your local 9Router.');
       }
     } else if (!testModel && p === '9router-public') {
-      // apiKey IS the tunnel URL — ping it to get available models
-      const tunnelUrl = apiKey.replace(/\/$/, '');
+      // apiKey IS the tunnel URL — normalize: strip trailing /v1 so we control the path
+      const tunnelUrl = apiKey.replace(/\/v1\/?$/, '').replace(/\/$/, '');
+      apiKey = tunnelUrl; // store normalized form
       try {
         const res = await fetch(`${tunnelUrl}/v1/models`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);

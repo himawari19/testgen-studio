@@ -113,7 +113,7 @@ export async function callLLM(
       if (!effectiveKey || !effectiveKey.startsWith('http')) {
         throw new Error('9Router Public URL not configured. Enter your Cloudflare Tunnel URL in AI Settings.');
       }
-      baseURL = `${effectiveKey.replace(/\/$/, '')}/v1/chat/completions`;
+      baseURL = `${effectiveKey.replace(/\/v1\/?$/, '').replace(/\/$/, '')}/v1/chat/completions`;
       if (!resolvedModel) throw new Error('A specific model must be provided for 9Router');
       break;
     case 'groq':
