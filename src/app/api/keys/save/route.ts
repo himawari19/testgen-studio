@@ -10,7 +10,7 @@ export async function POST(request: Request) {
 
     const p = provider.toLowerCase().trim();
     const parsed = p === '9router-public' ? parse9RouterPublicInput(api_key) : null;
-    const key = parsed?.key || api_key.trim();
+    const key = p === '9router-public' ? (parsed?.key || '') : api_key.trim();
 
     const data = loadKeys();
     data.keys[p] = key;
@@ -35,7 +35,7 @@ export async function POST(request: Request) {
       alibaba:          'ALIBABA_API_KEY',
       '9router-public': 'NINE_ROUTER_PUBLIC_API_KEY',
     };
-    if (envMap[p]) {
+    if (envMap[p] && key) {
       process.env[envMap[p]] = key;
     }
 

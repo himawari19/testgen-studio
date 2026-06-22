@@ -12,7 +12,7 @@ export async function callLLM(
 ): Promise<string> {
   const p = provider.toLowerCase().trim();
   const effectiveKey = (p === '9router' && !apiKey) ? '9router-local-key' : apiKey;
-  if (!effectiveKey) {
+  if (!effectiveKey && p !== '9router-public') {
     throw new Error(`API key for provider ${p} is empty`);
   }
 
@@ -150,12 +150,12 @@ export async function callLLM(
     payload.response_format = { type: 'json_object' };
   }
 
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (effectiveKey) headers.Authorization = `Bearer ${effectiveKey}`;
+
   const response = await fetch(baseURL, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${effectiveKey}`
-    },
+    headers,
     body: JSON.stringify(payload)
   });
 

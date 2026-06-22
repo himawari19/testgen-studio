@@ -35,11 +35,7 @@ export async function POST(request: Request) {
       }
     }
 
-    if (p === '9router-public' && (!apiKey || apiKey.length < 10)) {
-      return NextResponse.json({ valid: false, message: 'Enter both 9Router public URL and API key, separated by a space or new line.' });
-    }
-
-    if (!apiKey || apiKey.length < 10) {
+    if (p !== '9router-public' && (!apiKey || apiKey.length < 10)) {
       return NextResponse.json({ valid: false, message: 'API key is empty or too short' });
     }
 
@@ -68,7 +64,7 @@ export async function POST(request: Request) {
       process.env.NINE_ROUTER_PUBLIC_URL = tunnelUrl;
       try {
         const res = await fetch(`${tunnelUrl}/v1/models`, {
-          headers: { Authorization: `Bearer ${apiKey}` },
+          headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : undefined,
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
