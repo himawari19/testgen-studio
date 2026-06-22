@@ -35,6 +35,10 @@ export async function POST(request: Request) {
       }
     }
 
+    if (p === '9router-public' && (!apiKey || apiKey.length < 10)) {
+      return NextResponse.json({ valid: false, message: 'Enter both 9Router public URL and API key, separated by a space or new line.' });
+    }
+
     if (!apiKey || apiKey.length < 10) {
       return NextResponse.json({ valid: false, message: 'API key is empty or too short' });
     }
