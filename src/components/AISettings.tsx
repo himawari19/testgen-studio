@@ -6,7 +6,9 @@ import { ModelsResponse } from "@/types";
 import toast from "react-hot-toast";
 import { Settings, X, RefreshCw, ChevronDown, ExternalLink, Key, Check } from "lucide-react";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
+// ponytail: 9Router is a local gateway — only relevant when running on localhost
+const IS_LOCAL = typeof window !== "undefined" && window.location.hostname === "localhost";
 
 interface AISettingsProps {
   onProviderChange: (provider: string, model: string) => void;
@@ -380,7 +382,7 @@ export default function AISettings({
   if (inline) {
     return (
       <div className="space-y-3">
-        {Object.entries(PROVIDER_INFO).map(([provider, info]) => {
+        {Object.entries(PROVIDER_INFO).filter(([p]) => p !== '9router' || IS_LOCAL).map(([provider, info]) => {
           const state = providers[provider] || { status: "disconnected", keyInput: "", showInput: false, validating: false };
           const isActive = selectedProvider === provider && state?.status === "connected";
 
@@ -638,7 +640,7 @@ export default function AISettings({
           </div>
 
           <div className="space-y-2">
-            {Object.entries(PROVIDER_INFO).map(([provider, info]) => {
+            {Object.entries(PROVIDER_INFO).filter(([p]) => p !== '9router' || IS_LOCAL).map(([provider, info]) => {
               const state = providers[provider] || { status: "disconnected", keyInput: "", showInput: false, validating: false };
               const isActive = selectedProvider === provider && state?.status === "connected";
 

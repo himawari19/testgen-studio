@@ -20,7 +20,7 @@ import { HistoryItem, HistoryDetail, HistoryListResponse } from "@/types";
 import ResultsDisplay from "@/components/ResultsDisplay";
 import toast from "react-hot-toast";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
 interface ConfirmDialog {
   title: string;

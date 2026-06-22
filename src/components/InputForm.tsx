@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { GenerateResponse } from "@/types";
 import { Send, Globe, MessageSquare, Loader2, Lock, ChevronDown, Code2, Zap, Plus, X } from "lucide-react";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
 interface AuthConfig {
   auth_type: string | null;

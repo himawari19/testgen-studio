@@ -20,7 +20,7 @@ export default function Home() {
 
   const refreshModels = useCallback(async () => {
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
       const res = await axios.get<ModelsResponse>(`${API_URL}/api/models`);
       setModelsData(res.data);
 

@@ -17,7 +17,7 @@ import {
 import { MonitoredUrl, MonitorListResponse } from "@/types";
 import toast from "react-hot-toast";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
 export default function MonitorPage() {
   const [monitoredUrls, setMonitoredUrls] = useState<MonitoredUrl[]>([]);
