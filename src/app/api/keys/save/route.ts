@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { loadKeys, saveKeys } from '../store';
+import { loadKeys, parse9RouterPublicInput, saveKeys } from '../store';
 
 export async function POST(request: Request) {
   try {
@@ -9,10 +9,15 @@ export async function POST(request: Request) {
     }
 
     const p = provider.toLowerCase().trim();
-    const key = api_key.trim();
+    const parsed = p === '9router-public' ? parse9RouterPublicInput(api_key) : null;
+    const key = parsed?.key || api_key.trim();
 
     const data = loadKeys();
     data.keys[p] = key;
+    if (parsed?.url) {
+      data.urls = { ...(data.urls || {}), [p]: parsed.url };
+      process.env.NINE_ROUTER_PUBLIC_URL = parsed.url;
+    }
     if (!data.validated.includes(p)) {
       data.validated.push(p);
     }
