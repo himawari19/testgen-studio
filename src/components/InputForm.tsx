@@ -600,7 +600,7 @@ export default function InputForm({
       </div>
 
       {/* Footer */}
-      <div className="flex items-center justify-between gap-2 mt-5 sm:mt-6 pt-4 sm:pt-5 border-t border-slate-100 dark:border-slate-800">
+      <div className="flex items-center justify-between gap-2 mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
         {/* Fast Mode Toggle */}
         <button
           type="button"
