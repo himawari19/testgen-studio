@@ -20,7 +20,7 @@ export default function Home() {
 
   const refreshModels = useCallback(async () => {
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
+      const API_URL = "";
       const res = await axios.get<ModelsResponse>(`${API_URL}/api/models`);
       setModelsData(res.data);
 
@@ -28,6 +28,15 @@ export default function Home() {
       const saved = localStorage.getItem("urltoscript_selected_provider_model");
       if (saved) {
         const { provider, model } = JSON.parse(saved);
+        if (provider === "9router-public") {
+          const publicConfig = JSON.parse(localStorage.getItem("9router_public") || "{}");
+          const publicModel = publicConfig.selectedModel || model;
+          if (Array.isArray(publicConfig.models) && publicConfig.models.includes(publicModel)) {
+            setAiProvider(provider);
+            setAiModel(publicModel);
+            return;
+          }
+        }
         // Verify key is still connected and model is valid
         if (res.data.status[provider] === "connected" && res.data.providers[provider]?.includes(model)) {
           setAiProvider(provider);

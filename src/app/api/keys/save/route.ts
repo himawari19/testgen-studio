@@ -16,28 +16,12 @@ export async function POST(request: Request) {
     data.keys[p] = key;
     if (parsed?.url) {
       data.urls = { ...(data.urls || {}), [p]: parsed.url };
-      process.env.NINE_ROUTER_PUBLIC_URL = parsed.url;
     }
     if (!data.validated.includes(p)) {
       data.validated.push(p);
     }
 
     saveKeys(data);
-
-    // Apply to process.env immediately
-    const envMap: Record<string, string> = {
-      openai:           'OPENAI_API_KEY',
-      anthropic:        'ANTHROPIC_API_KEY',
-      google:           'GOOGLE_API_KEY',
-      groq:             'GROQ_API_KEY',
-      deepseek:         'DEEPSEEK_API_KEY',
-      moonshot:         'MOONSHOT_API_KEY',
-      alibaba:          'ALIBABA_API_KEY',
-      '9router-public': 'NINE_ROUTER_PUBLIC_API_KEY',
-    };
-    if (envMap[p] && key) {
-      process.env[envMap[p]] = key;
-    }
 
     return NextResponse.json({
       success: true,

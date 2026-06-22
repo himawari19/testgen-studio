@@ -13,9 +13,6 @@ export async function POST(request: Request) {
     let apiKey = api_key ? api_key.trim() : '';
     const publicInput = p === '9router-public' ? parse9RouterPublicInput(apiKey) : null;
     if (publicInput) apiKey = publicInput.key;
-    if (publicInput?.url) {
-      process.env.NINE_ROUTER_PUBLIC_URL = publicInput.url;
-    }
 
     if (!apiKey) {
       if (p === '9router') {
@@ -24,17 +21,7 @@ export async function POST(request: Request) {
         // URL must be supplied by user — no fallback
       } else {
         // ponytail: Fallback to loading existing key from store or environment
-        const runtimeData = loadKeys();
-        const envKeys: Record<string, string> = {
-          openai: 'OPENAI_API_KEY',
-          anthropic: 'ANTHROPIC_API_KEY',
-          google: 'GOOGLE_API_KEY',
-          groq: 'GROQ_API_KEY',
-          deepseek: 'DEEPSEEK_API_KEY',
-          moonshot: 'MOONSHOT_API_KEY',
-          alibaba: 'ALIBABA_API_KEY',
-        };
-        apiKey = runtimeData.keys[p] || process.env[envKeys[p]] || '';
+        apiKey = loadKeys().keys[p] || '';
       }
     }
 
@@ -63,13 +50,13 @@ export async function POST(request: Request) {
     } else if (!testModel && p === '9router-public') {
       // apiKey IS the tunnel URL — normalize: strip trailing /v1 so we control the path
       const runtimeData = loadKeys();
-      const tunnelUrl = (publicInput?.url || runtimeData.urls?.['9router-public'] || process.env.NINE_ROUTER_PUBLIC_URL || '')
+      const tunnelUrl = (publicInput?.url || runtimeData.urls?.['9router-public'] || '')
         .replace(/\/v1\/?$/, '').replace(/\/$/, '');
       if (!tunnelUrl) throw new Error('Enter 9Router public URL and API key in the same field.');
-      process.env.NINE_ROUTER_PUBLIC_URL = tunnelUrl;
       try {
         const res = await fetch(`${tunnelUrl}/v1/models`, {
           headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : undefined,
+          signal: AbortSignal.timeout(15000),
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
@@ -81,6 +68,12 @@ export async function POST(request: Request) {
       if (!testModel) {
         throw new Error('No models found at this 9Router URL. Make sure 9Router is running and has models configured.');
       }
+      return NextResponse.json({
+        valid: true,
+        message: '9Router public URL is reachable',
+        model: testModel,
+        models,
+      });
     } else if (!testModel) {
       testModel = '';
     }

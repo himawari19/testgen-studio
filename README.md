@@ -43,7 +43,6 @@ Frontend (Next.js 14) → Backend (FastAPI) → Playwright (Crawl) → AI (Analy
 cd backend
 pip install -r requirements.txt
 playwright install chromium
-cp .env.example .env
 python run.py
 ```
 
@@ -52,7 +51,6 @@ python run.py
 ```bash
 cd frontend
 npm install
-cp .env.example .env.local
 npm run dev
 ```
 
@@ -126,7 +124,6 @@ The crawler supports 4 authentication methods for protected pages:
 │   ├── data/                  # SQLite database (auto-created)
 │   ├── run.py
 │   ├── requirements.txt
-│   └── .env.example
 ├── frontend/
 │   ├── src/
 │   │   ├── app/page.tsx      # Main page (hash routing, shortcuts, dark mode)

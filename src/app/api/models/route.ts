@@ -3,8 +3,8 @@ import { loadKeys, saveKeys } from '../keys/store';
 import { callLLM } from '../ai/llm';
 
 export async function GET() {
-  const currentProvider = process.env.AI_PROVIDER || 'groq';
-  const currentModel = process.env.AI_MODEL || 'llama-3.3-70b-versatile';
+  const currentProvider = 'groq';
+  const currentModel = 'llama-3.3-70b-versatile';
 
   const availableModels: Record<string, string[]> = {
     openai: ['gpt-5.5', 'gpt-5.4', 'gpt-5.4-mini', 'o3-mini', 'o1', 'o1-mini', 'gpt-4o', 'gpt-4o-mini'],
@@ -30,15 +30,7 @@ export async function GET() {
     '9router-public': '9Router (Public)',
   };
 
-  const envKeys: Record<string, string> = {
-    openai: 'OPENAI_API_KEY',
-    anthropic: 'ANTHROPIC_API_KEY',
-    google: 'GOOGLE_API_KEY',
-    groq: 'GROQ_API_KEY',
-    deepseek: 'DEEPSEEK_API_KEY',
-    moonshot: 'MOONSHOT_API_KEY',
-    alibaba: 'ALIBABA_API_KEY',
-  };
+  const providers = ['openai', 'anthropic', 'google', 'groq', 'deepseek', 'moonshot', 'alibaba'];
 
   const runtimeData = loadKeys();
   const statusMap: Record<string, string> = {};
@@ -76,8 +68,8 @@ export async function GET() {
     }
   };
 
-  const validationPromises = Object.entries(envKeys).map(async ([p, envVar]) => {
-    const key = runtimeData.keys[p] || process.env[envVar] || '';
+  const validationPromises = providers.map(async (p) => {
+    const key = runtimeData.keys[p] || '';
     if (key.length > 10) {
       const isValidated = runtimeData.validated.includes(p);
       if (isValidated) {
@@ -130,9 +122,9 @@ export async function GET() {
 
   statusMap['9router'] = await ping9Router('http://127.0.0.1:20128', '9router');
 
-  const publicUrl = (runtimeData.urls?.['9router-public'] || process.env.NINE_ROUTER_PUBLIC_URL || '')
+  const publicUrl = (runtimeData.urls?.['9router-public'] || '')
     .replace(/\/v1\/?$/, '').replace(/\/$/, '');
-  const publicKey = runtimeData.keys['9router-public'] || process.env.NINE_ROUTER_PUBLIC_API_KEY || '';
+  const publicKey = runtimeData.keys['9router-public'] || '';
   statusMap['9router-public'] = publicUrl
     ? await ping9Router(publicUrl, '9router-public', publicKey)
     : 'disconnected';

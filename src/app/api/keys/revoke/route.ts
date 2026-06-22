@@ -16,20 +16,6 @@ export async function POST(request: Request) {
 
     saveKeys(data);
 
-    // Revoke from process.env immediately
-    const envMap: Record<string, string> = {
-      openai: 'OPENAI_API_KEY',
-      anthropic: 'ANTHROPIC_API_KEY',
-      google: 'GOOGLE_API_KEY',
-      groq: 'GROQ_API_KEY',
-      deepseek: 'DEEPSEEK_API_KEY',
-      moonshot: 'MOONSHOT_API_KEY',
-      alibaba: 'ALIBABA_API_KEY',
-    };
-    if (envMap[p]) {
-      process.env[envMap[p]] = '';
-    }
-
     return NextResponse.json({
       success: true,
       message: `API key for ${provider} revoked`

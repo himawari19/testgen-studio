@@ -95,23 +95,14 @@ export async function POST(request: Request) {
 
         try {
           const p = (ai_provider || 'openai').toLowerCase().trim();
-          const envMap: Record<string, string> = {
-            openai: 'OPENAI_API_KEY',
-            anthropic: 'ANTHROPIC_API_KEY',
-            google: 'GOOGLE_API_KEY',
-            groq: 'GROQ_API_KEY',
-            deepseek: 'DEEPSEEK_API_KEY',
-            moonshot: 'MOONSHOT_API_KEY',
-            alibaba: 'ALIBABA_API_KEY',
-          };
-          const envVar = envMap[p] || 'OPENAI_API_KEY';
-          if (p === '9router-public' && nine_router_public_url) {
-            process.env.NINE_ROUTER_PUBLIC_URL = String(nine_router_public_url).replace(/\/v1\/?$/, '').replace(/\/$/, '');
-          }
+          const publicBaseUrl = p === '9router-public'
+            ? String(nine_router_public_url || '').replace(/\/v1\/?$/, '').replace(/\/$/, '')
+            : '';
+          const runtimeKeys = loadKeys().keys;
           // ponytail: 9router uses local key, 9router-public uses stored public API key
           const apiKey = p === '9router' ? '9router-local-key'
-            : p === '9router-public' ? (nine_router_public_key || loadKeys().keys['9router-public'] || process.env.NINE_ROUTER_PUBLIC_API_KEY || '')
-            : (process.env[envVar] || '');
+            : p === '9router-public' ? (nine_router_public_key || runtimeKeys['9router-public'] || '')
+            : (runtimeKeys[p] || '');
 
           // cases-only = planning only, fast model is sufficient; fast_mode also forces fast model
           const stage1Model = (fast_mode || output_mode === 'cases') ? getFastModel(p, ai_model || '') : (ai_model || '');
@@ -156,7 +147,8 @@ export async function POST(request: Request) {
             stage1Model,
             apiKey,
             '',
-            minTestCases
+            minTestCases,
+            publicBaseUrl
           );
           const testCases = rawTestCases.map((tc: any) => deriveFields(tc, url, runSlug, framework || 'playwright', language || 'typescript'));
 
@@ -199,7 +191,8 @@ export async function POST(request: Request) {
               sendEvent('formatting', `Generating script ${tc.number}/${testCases.length}...`);
               const script = await generateScriptForTestCase(
                 pageData, effectiveContext, p, ai_model || '', apiKey,
-                tc, framework || 'playwright', language || 'typescript'
+                tc, framework || 'playwright', language || 'typescript',
+                publicBaseUrl
               );
               if (script.file_name) script.script_location = `${runFolder}/${script.file_name}`;
               totalTokens += script.tokens_used || 0;

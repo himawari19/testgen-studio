@@ -6,7 +6,7 @@ import { ModelsResponse } from "@/types";
 import toast from "react-hot-toast";
 import { Settings, X, RefreshCw, ChevronDown, ExternalLink, Key, Check } from "lucide-react";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
+const API_URL = "";
 // ponytail: 9Router is a local gateway — only relevant when running on localhost
 const IS_LOCAL = typeof window !== "undefined" && window.location.hostname === "localhost";
 
@@ -131,6 +131,7 @@ export default function AISettings({
         url?: string;
         key?: string;
         models?: string[];
+        selectedModel?: string;
       };
     } catch {
       return {};
@@ -207,16 +208,18 @@ export default function AISettings({
       });
 
       const validatedModels = Array.isArray(validateRes.data.models) ? validateRes.data.models : [];
+      const nextModel = validatedModels[0] || '';
       if (provider === '9router-public') {
         localStorage.setItem('9router_public', JSON.stringify({
           url: state.urlInput || '',
           key: state.keyInput || '',
           models: validatedModels,
+          selectedModel: nextModel,
         }));
       }
       if (validatedModels.length > 0) {
         setLocalProviderModels((prev) => ({ ...prev, [provider]: validatedModels }));
-        onProviderChange(provider, validatedModels[0]);
+        onProviderChange(provider, nextModel);
       }
 
       const tokensInfo = validateRes.data.tokens !== undefined ? ` (tokens: ${validateRes.data.tokens})` : '';
@@ -233,13 +236,13 @@ export default function AISettings({
         },
       }));
 
-      await refreshModels();
+      if (provider !== '9router-public') await refreshModels();
       if (validatedModels.length > 0) {
         setProviders((prev) => ({
           ...prev,
           [provider]: { ...prev[provider], status: "connected", showInput: false, validating: false },
         }));
-        onProviderChange(provider, validatedModels[0]);
+        onProviderChange(provider, nextModel);
       }
     } catch (err: any) {
       toast.error(err.response?.data?.detail || "Failed to validate key");
@@ -350,11 +353,15 @@ export default function AISettings({
       return;
     }
 
-    const checkingToast = toast.loading(`Pinging ${PROVIDER_INFO[provider]?.label} (model: ${targetModel || 'default'})...`);
+    const checkingToast = toast.loading(
+      provider === '9router-public'
+        ? `Refreshing ${PROVIDER_INFO[provider]?.label} models...`
+        : `Pinging ${PROVIDER_INFO[provider]?.label} (model: ${targetModel || 'default'})...`
+    );
     try {
       const res = await axios.post(`${API_URL}/api/keys/validate`, {
         provider,
-        model: targetModel,
+        ...(provider === '9router-public' ? {} : { model: targetModel }),
         ...(apiKey ? { api_key: apiKey } : {}),
       });
 
@@ -362,14 +369,21 @@ export default function AISettings({
       if (res.data.valid) {
         const validatedModels = Array.isArray(res.data.models) ? res.data.models : [];
         if (provider === '9router-public' && validatedModels.length > 0) {
+          const nextModel = validatedModels.includes(saved9Router.selectedModel || '')
+            ? saved9Router.selectedModel || ''
+            : validatedModels.includes(targetModel)
+              ? targetModel
+              : validatedModels[0];
           setLocalProviderModels((prev) => ({ ...prev, [provider]: validatedModels }));
           localStorage.setItem('9router_public', JSON.stringify({
             ...saved9Router,
             models: validatedModels,
+            selectedModel: nextModel,
           }));
+          onProviderChange(provider, nextModel);
         }
         const tokensInfo = res.data.tokens !== undefined ? ` (tokens: ${res.data.tokens})` : '';
-        toast.success(`${PROVIDER_INFO[provider]?.label} connected successfully (model: ${targetModel})${tokensInfo}!`);
+        toast.success(`${PROVIDER_INFO[provider]?.label} connected successfully${targetModel && provider !== '9router-public' ? ` (model: ${targetModel})` : ''}${tokensInfo}!`);
         setProviders((prev) => ({
           ...prev,
           [provider]: {
@@ -378,7 +392,7 @@ export default function AISettings({
             validating: false,
           },
         }));
-        await refreshModels();
+        if (provider !== '9router-public') await refreshModels();
         if (provider === '9router-public') {
           setProviders((prev) => ({
             ...prev,
@@ -412,10 +426,6 @@ export default function AISettings({
 
   const handleRevoke = async (provider: string) => {
     try {
-      await axios.post(`${API_URL}/api/keys/revoke`, {
-        provider,
-        api_key: "",
-      });
       if (provider === '9router-public') {
         localStorage.removeItem('9router_public');
         setLocalProviderModels((prev) => {
@@ -423,7 +433,19 @@ export default function AISettings({
           delete next['9router-public'];
           return next;
         });
+        setProviders((prev) => ({
+          ...prev,
+          [provider]: { status: "disconnected", keyInput: "", showInput: false, validating: false },
+        }));
+        toast.success(`${PROVIDER_INFO[provider]?.label} disconnected`);
+        if (selectedProvider === provider) onProviderChange("", "");
+        return;
       }
+
+      await axios.post(`${API_URL}/api/keys/revoke`, {
+        provider,
+        api_key: "",
+      });
 
       setProviders((prev) => ({
         ...prev,
@@ -473,13 +495,24 @@ export default function AISettings({
       toast.error("Connect this provider first.");
       return;
     }
-    const firstModel = (localProviderModels[provider] || modelsData?.providers[provider] || [])[0] || "";
+    const models = localProviderModels[provider] || modelsData?.providers[provider] || [];
+    const saved9Router = provider === '9router-public' ? getSaved9RouterPublic() : {};
+    const firstModel = provider === '9router-public' && models.includes(saved9Router.selectedModel || '')
+      ? saved9Router.selectedModel || ''
+      : models[0] || "";
     onProviderChange(provider, firstModel);
     // ponytail: Do not auto close on provider change as requested
     toast.success(`Switched to ${PROVIDER_INFO[provider]?.label}`);
   };
 
   const handleSelectModel = (model: string) => {
+    if (selectedProvider === '9router-public') {
+      const saved9Router = getSaved9RouterPublic();
+      localStorage.setItem('9router_public', JSON.stringify({
+        ...saved9Router,
+        selectedModel: model,
+      }));
+    }
     onProviderChange(selectedProvider, model);
     // ponytail: Do not auto close on model selection as requested
   };

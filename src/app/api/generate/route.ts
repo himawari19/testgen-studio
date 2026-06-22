@@ -5,6 +5,7 @@ import { getDB } from '../db';
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
+import { loadKeys } from '../keys/store';
 
 function formatTestCaseTable(testCases: any[]): string {
   const header = "| # | Scenario | Input | Expected Result | File Name | Script Location |";
@@ -22,18 +23,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ detail: 'URL and user_context are required' }, { status: 400 });
     }
 
-    const p = (ai_provider || process.env.AI_PROVIDER || 'openai').toLowerCase().trim();
-    const envMap: Record<string, string> = {
-      openai: 'OPENAI_API_KEY',
-      anthropic: 'ANTHROPIC_API_KEY',
-      google: 'GOOGLE_API_KEY',
-      groq: 'GROQ_API_KEY',
-      deepseek: 'DEEPSEEK_API_KEY',
-      moonshot: 'MOONSHOT_API_KEY',
-      alibaba: 'ALIBABA_API_KEY',
-    };
-    const envVar = envMap[p] || 'OPENAI_API_KEY';
-    const apiKey = process.env[envVar] || '';
+    const p = (ai_provider || 'openai').toLowerCase().trim();
+    const apiKey = loadKeys().keys[p] || '';
 
     // Step 1: Crawl
     const pageData = await crawlPage(url, auth);

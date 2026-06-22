@@ -283,7 +283,8 @@ export async function generateTestCases(
   model: string,
   apiKey: string,
   customPrompt: string = '',
-  minTestCases: number = 10
+  minTestCases: number = 10,
+  publicBaseUrl: string = ''
 ): Promise<{ testCases: any[]; tokens: number }> {
   const effectiveContext = customPrompt
     ? `${userContext}\nAdditional instructions: ${customPrompt}`
@@ -338,7 +339,8 @@ Return exactly:
           tcUser,
           true,
           TC_MAX_OUTPUT_TOKENS,
-          usage
+          usage,
+          publicBaseUrl
         );
         break;
       } catch (err) {
@@ -405,7 +407,8 @@ export async function generateScriptForTestCase(
   apiKey: string,
   testCase: any,
   framework: string = 'playwright',
-  language: string = 'typescript'
+  language: string = 'typescript',
+  publicBaseUrl: string = ''
 ): Promise<ScriptFile & { tokens_used: number }> {
   const fastModel = getFastModel(provider, model);
   const frameworkRules = getFrameworkRules(framework, language);
@@ -470,7 +473,8 @@ Return exactly:
         scrUser,
         true,
         SCRIPT_MAX_OUTPUT_TOKENS,
-        scrUsage
+        scrUsage,
+        publicBaseUrl
       );
       break;
     } catch (err) {

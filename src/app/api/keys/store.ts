@@ -12,17 +12,6 @@ interface KeyData {
 
 let memoryData: KeyData = { keys: {}, urls: {}, validated: [] };
 
-const ENV_MAP: Record<string, string> = {
-  openai: 'OPENAI_API_KEY',
-  anthropic: 'ANTHROPIC_API_KEY',
-  google: 'GOOGLE_API_KEY',
-  groq: 'GROQ_API_KEY',
-  deepseek: 'DEEPSEEK_API_KEY',
-  moonshot: 'MOONSHOT_API_KEY',
-  alibaba: 'ALIBABA_API_KEY',
-  '9router-public': 'NINE_ROUTER_PUBLIC_API_KEY',
-};
-
 export function parse9RouterPublicInput(input: string) {
   const raw = input.trim();
   const urlMatch = raw.match(/https?:\/\/\S+/);
@@ -33,19 +22,7 @@ export function parse9RouterPublicInput(input: string) {
 
 export function loadKeys(): KeyData {
   if (IS_VERCEL) {
-    const keys: Record<string, string> = { ...memoryData.keys };
-    const urls: Record<string, string> = { ...(memoryData.urls || {}) };
-    const validated = [...memoryData.validated];
-
-    for (const [provider, envVar] of Object.entries(ENV_MAP)) {
-      const val = process.env[envVar];
-      if (val) {
-        keys[provider] = val;
-        validated.push(provider);
-      }
-    }
-    if (process.env.NINE_ROUTER_PUBLIC_URL) urls['9router-public'] = process.env.NINE_ROUTER_PUBLIC_URL;
-    return { keys, urls, validated: Array.from(new Set(validated)) };
+    return memoryData;
   }
 
   if (!fs.existsSync(storePath)) return { keys: {}, urls: {}, validated: [] };
@@ -65,13 +42,5 @@ export function saveKeys(data: KeyData) {
     fs.writeFileSync(storePath, JSON.stringify(data, null, 2), 'utf8');
   } catch (err) {
     console.error('Failed to write keys to disk:', err);
-  }
-}
-
-export function applyKeysToEnv() {
-  const data = loadKeys();
-  for (const [provider, key] of Object.entries(data.keys)) {
-    const envVar = ENV_MAP[provider];
-    if (envVar && key) process.env[envVar] = key;
   }
 }
