@@ -15,6 +15,7 @@ export async function GET() {
     moonshot: ['kimi-k2.6'],
     alibaba: ['qwen3.6-flash', 'qwen3.6-plus'],
     '9router': ['gpt-4o', 'claude-3-5-sonnet', 'deepseek-chat'],
+    '9router-public': [],
   };
 
   const labels: Record<string, string> = {
@@ -26,6 +27,7 @@ export async function GET() {
     moonshot: 'Moonshot (Kimi)',
     alibaba: 'Alibaba (Qwen)',
     '9router': '9Router (Local)',
+    '9router-public': '9Router (Public)',
   };
 
   const envKeys: Record<string, string> = {
@@ -103,30 +105,32 @@ export async function GET() {
     saveKeys(runtimeData);
   }
 
-  // ponytail: Dynamically validate 9Router status and fetch models from local API gateway with a safe timeout
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 3000);
-  try {
-    const response = await fetch('http://127.0.0.1:20128/v1/models', {
-      signal: controller.signal,
-    });
-    clearTimeout(timeoutId);
-    if (response.ok) {
-      const data = await response.json();
+  // ponytail: Dynamically validate 9Router (local + public) and fetch models with a safe timeout
+  const ping9Router = async (baseUrl: string, key: string) => {
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), 3000);
+    try {
+      const res = await fetch(`${baseUrl}/v1/models`, { signal: ctrl.signal });
+      clearTimeout(tid);
+      if (!res.ok) return 'disconnected';
+      const data = await res.json();
       if (data && Array.isArray(data.data)) {
         const fetched = data.data.map((m: any) => m.id);
-        if (fetched.length > 0) {
-          availableModels['9router'] = fetched;
-        }
+        if (fetched.length > 0) availableModels[key] = fetched;
       }
-      statusMap['9router'] = 'connected';
-    } else {
-      statusMap['9router'] = 'disconnected';
+      return 'connected';
+    } catch {
+      clearTimeout(tid);
+      return 'disconnected';
     }
-  } catch {
-    clearTimeout(timeoutId);
-    statusMap['9router'] = 'disconnected';
-  }
+  };
+
+  statusMap['9router'] = await ping9Router('http://127.0.0.1:20128', '9router');
+
+  const publicUrl = runtimeData.keys['9router-public'] || process.env.NINE_ROUTER_PUBLIC_URL || '';
+  statusMap['9router-public'] = publicUrl
+    ? await ping9Router(publicUrl.replace(/\/$/, ''), '9router-public')
+    : 'disconnected';
 
   const configured: Record<string, boolean> = {};
   for (const [p, st] of Object.entries(statusMap)) {

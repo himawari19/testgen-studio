@@ -77,6 +77,12 @@ const PROVIDER_INFO: Record<string, { label: string; color: string; placeholder:
     placeholder: "Runs locally on http://localhost:20128",
     docUrl: "https://github.com/decolua/9router",
   },
+  '9router-public': {
+    label: "9Router (Public)",
+    color: "bg-violet-500",
+    placeholder: "https://your-tunnel.trycloudflare.com",
+    docUrl: "https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/",
+  },
 };
 
 export default function AISettings({
@@ -99,6 +105,7 @@ export default function AISettings({
     moonshot: { status: "disconnected", keyInput: "", showInput: false, validating: false },
     alibaba: { status: "disconnected", keyInput: "", showInput: false, validating: false },
     '9router': { status: "disconnected", keyInput: "", showInput: false, validating: false },
+    '9router-public': { status: "disconnected", keyInput: "", showInput: false, validating: false },
   });
 
   // Sync with modelsData whenever it changes
@@ -518,13 +525,21 @@ export default function AISettings({
                   </code>
                 </div>
               )}
+              {provider === '9router-public' && state.status !== "connected" && (
+                <div className="mt-2 text-xs text-slate-500 bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                  <p className="font-semibold text-slate-600 mb-0.5">Enter your Cloudflare Tunnel URL:</p>
+                  <code className="block bg-slate-800 text-slate-200 px-2 py-1 rounded text-[11px] font-mono select-all">
+                    https://your-tunnel.trycloudflare.com
+                  </code>
+                </div>
+              )}
 
               {/* Key Input */}
               {provider !== '9router' && state.showInput && (
                 <div className="mt-3 pt-3 border-t border-slate-100">
                   <div className="flex gap-2">
                     <input
-                      type="password"
+                      type={provider === '9router-public' ? "text" : "password"}
                       value={state.keyInput}
                       onChange={(e) =>
                         setProviders((prev) => ({

@@ -15,6 +15,8 @@ export async function POST(request: Request) {
     if (!apiKey) {
       if (p === '9router') {
         apiKey = '9router-local-key';
+      } else if (p === '9router-public') {
+        // URL must be supplied by user — no fallback
       } else {
         // ponytail: Fallback to loading existing key from store or environment
         const runtimeData = loadKeys();
@@ -50,6 +52,20 @@ export async function POST(request: Request) {
       }
       if (!testModel) {
         throw new Error('No models/combos are currently configured or running on your local 9Router.');
+      }
+    } else if (!testModel && p === '9router-public') {
+      // apiKey IS the tunnel URL — ping it to get available models
+      const tunnelUrl = apiKey.replace(/\/$/, '');
+      try {
+        const res = await fetch(`${tunnelUrl}/v1/models`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        testModel = data?.data?.[0]?.id || '';
+      } catch (err: any) {
+        throw new Error(`Cannot reach 9Router at ${tunnelUrl}: ${err.message}`);
+      }
+      if (!testModel) {
+        throw new Error('No models found at this 9Router URL. Make sure 9Router is running and has models configured.');
       }
     } else if (!testModel) {
       testModel = '';

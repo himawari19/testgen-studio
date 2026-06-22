@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { crawlPage, PageData } from '../../crawler';
 import { generateTestCases, generateScriptForTestCase, getFastModel, getFileExtension } from '../../ai/analyzer';
 import { getDB } from '../../db';
+import { loadKeys } from '../../keys/store';
 import crypto from 'crypto';
 
 // ponytail: in-memory DOM cache keyed by URL, TTL 10 menit
@@ -104,8 +105,10 @@ export async function POST(request: Request) {
             alibaba: 'ALIBABA_API_KEY',
           };
           const envVar = envMap[p] || 'OPENAI_API_KEY';
-          // ponytail: Bypass standard env lookup if provider is 9Router (uses local gateway)
-          const apiKey = p === '9router' ? '9router-local-key' : (process.env[envVar] || '');
+          // ponytail: 9router uses local key, 9router-public uses stored tunnel URL
+          const apiKey = p === '9router' ? '9router-local-key'
+            : p === '9router-public' ? (loadKeys().keys['9router-public'] || process.env.NINE_ROUTER_PUBLIC_URL || '')
+            : (process.env[envVar] || '');
 
           // cases-only = planning only, fast model is sufficient; fast_mode also forces fast model
           const stage1Model = (fast_mode || output_mode === 'cases') ? getFastModel(p, ai_model || '') : (ai_model || '');
