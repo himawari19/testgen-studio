@@ -751,6 +751,7 @@ export default function AISettings({
                     className="input-field text-sm py-2"
                     aria-label={`Select model for ${info.label}`}
                   >
+                    <option value="">— Select model —</option>
                     {(localProviderModels[provider] || modelsData?.providers[provider] || []).map((model) => (
                       <option key={model} value={model}>
                         {model}
