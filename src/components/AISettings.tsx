@@ -535,7 +535,7 @@ export default function AISettings({
   if (inline) {
     return (
       <div className="space-y-3">
-        {Object.entries(PROVIDER_INFO).filter(([p]) => p !== '9router' || isLocal).map(([provider, info]) => {
+        {Object.entries(PROVIDER_INFO).filter(([p]) => (p === '9router' ? isLocal : p === '9router-public' ? !isLocal : true)).map(([provider, info]) => {
           const state = providers[provider] || { status: "disconnected", keyInput: "", showInput: false, validating: false };
           const isActive = selectedProvider === provider && state?.status === "connected";
 
@@ -818,7 +818,7 @@ export default function AISettings({
           </div>
 
           <div className="space-y-2">
-            {Object.entries(PROVIDER_INFO).filter(([p]) => p !== '9router' || isLocal).map(([provider, info]) => {
+            {Object.entries(PROVIDER_INFO).filter(([p]) => (p === '9router' ? isLocal : p === '9router-public' ? !isLocal : true)).map(([provider, info]) => {
               const state = providers[provider] || { status: "disconnected", keyInput: "", showInput: false, validating: false };
               const isActive = selectedProvider === provider && state?.status === "connected";
 
