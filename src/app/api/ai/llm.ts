@@ -1,4 +1,3 @@
-import { loadKeys } from '../keys/store';
 
 export async function callLLM(
   provider: string,
@@ -113,7 +112,7 @@ export async function callLLM(
       if (!resolvedModel) throw new Error('A specific model/combo must be provided for 9Router');
       break;
     case '9router-public':
-      baseURL = `${(publicBaseUrl || loadKeys().urls?.['9router-public'] || '').replace(/\/v1\/?$/, '').replace(/\/$/, '')}/v1/chat/completions`;
+      baseURL = `${(publicBaseUrl || '').replace(/\/v1\/?$/, '').replace(/\/$/, '')}/v1/chat/completions`;
       if (baseURL === '/v1/chat/completions') throw new Error('9Router public URL is not configured');
       if (!resolvedModel) throw new Error('A specific model must be provided for 9Router');
       break;

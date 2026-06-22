@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getDB } from '../../db';
+import { auth } from '@/auth';
 import fs from 'fs';
 import path from 'path';
 
@@ -8,8 +9,12 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    const session = await auth();
+    const userId = session?.user?.email;
+    if (!userId) return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 });
+
     const sql = getDB();
-    const rows = await sql`SELECT * FROM history WHERE id = ${params.id}`;
+    const rows = await sql`SELECT * FROM history WHERE id = ${params.id} AND user_id = ${userId}`;
     const record = rows[0] ?? null;
 
     if (!record) {
@@ -34,8 +39,12 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    const session = await auth();
+    const userId = session?.user?.email;
+    if (!userId) return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 });
+
     const sql = getDB();
-    const rows = await sql`SELECT scripts_json FROM history WHERE id = ${params.id}`;
+    const rows = await sql`SELECT scripts_json FROM history WHERE id = ${params.id} AND user_id = ${userId}`;
     const record = rows[0] ?? null;
     if (!record) return NextResponse.json({ detail: 'History record not found' }, { status: 404 });
 
@@ -52,7 +61,7 @@ export async function DELETE(
       try { await fs.promises.rmdir(folder); } catch {}
     }
 
-    await sql`DELETE FROM history WHERE id = ${params.id}`;
+    await sql`DELETE FROM history WHERE id = ${params.id} AND user_id = ${userId}`;
     return NextResponse.json({ success: true });
   } catch (err: any) {
     return NextResponse.json({ detail: err.message }, { status: 500 });

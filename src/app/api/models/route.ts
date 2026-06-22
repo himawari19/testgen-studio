@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
-import { loadKeys, saveKeys } from '../keys/store';
-import { callLLM } from '../ai/llm';
 
+export const dynamic = 'force-dynamic';
+
+// ponytail: keys are client-side only now, so this endpoint is just a static
+// model catalog + a live ping for the local 9Router. Cloud-provider connection
+// status is tracked in the browser (presence of a saved key = connected).
 export async function GET() {
-  const currentProvider = 'groq';
-  const currentModel = 'llama-3.3-70b-versatile';
-
   const availableModels: Record<string, string[]> = {
     openai: ['gpt-5.5', 'gpt-5.4', 'gpt-5.4-mini', 'o3-mini', 'o1', 'o1-mini', 'gpt-4o', 'gpt-4o-mini'],
     anthropic: ['claude-fable-5', 'claude-opus-4.8', 'claude-sonnet-4-6', 'claude-haiku-4-5', 'claude-3-5-sonnet-20241022', 'claude-3-5-haiku-20241022'],
@@ -14,7 +14,7 @@ export async function GET() {
     deepseek: ['deepseek-chat', 'deepseek-reasoner'],
     moonshot: ['kimi-k2.6'],
     alibaba: ['qwen3.6-flash', 'qwen3.6-plus'],
-    '9router': ['gpt-4o', 'claude-3-5-sonnet', 'deepseek-chat'],
+    '9router': [],
     '9router-public': [],
   };
 
@@ -30,116 +30,32 @@ export async function GET() {
     '9router-public': '9Router (Public)',
   };
 
-  const providers = ['openai', 'anthropic', 'google', 'groq', 'deepseek', 'moonshot', 'alibaba'];
-
-  const runtimeData = loadKeys();
-  const statusMap: Record<string, string> = {};
-  let runtimeKeysUpdated = false;
-
-  // ponytail: Helper to ping/verify credentials with a timeout
-  const validateKeyPromise = async (provider: string, apiKey: string) => {
-    const defaultModels: Record<string, string> = {
-      openai: 'gpt-4o-mini',
-      anthropic: 'claude-3-5-haiku-20241022',
-      google: 'gemini-1.5-flash',
-      groq: 'llama-3.1-8b-instant',
-      deepseek: 'deepseek-chat',
-      moonshot: 'kimi-k2.6',
-      alibaba: 'qwen3.6-flash',
-    };
-    const model = defaultModels[provider] || '';
-    
-    let timer: NodeJS.Timeout;
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      timer = setTimeout(() => reject(new Error('Validation timeout')), 2500);
-    });
-
-    try {
-      await Promise.race([
-        callLLM(provider, model, apiKey, 'QA', 'hi', false, 2),
-        timeoutPromise
-      ]);
-      clearTimeout(timer!);
-      return true;
-    } catch (e) {
-      clearTimeout(timer!);
-      console.warn(`Key verification failed for ${provider}:`, e);
-      return false;
-    }
-  };
-
-  const validationPromises = providers.map(async (p) => {
-    const key = runtimeData.keys[p] || '';
-    if (key.length > 10) {
-      const isValidated = runtimeData.validated.includes(p);
-      if (isValidated) {
-        statusMap[p] = 'connected';
-      } else {
-        const ok = await validateKeyPromise(p, key);
-        if (ok) {
-          statusMap[p] = 'connected';
-          if (!runtimeData.validated.includes(p)) {
-            runtimeData.validated.push(p);
-            runtimeKeysUpdated = true;
-          }
-        } else {
-          statusMap[p] = 'has_key';
-        }
-      }
-    } else {
-      statusMap[p] = 'disconnected';
-    }
-  });
-
-  await Promise.all(validationPromises);
-
-  if (runtimeKeysUpdated) {
-    saveKeys(runtimeData);
-  }
-
-  // ponytail: Dynamically validate 9Router (local + public) and fetch models with a safe timeout
-  const ping9Router = async (baseUrl: string, key: string, apiKey = '') => {
+  // Live-ping local 9Router (only reachable in local dev)
+  const status: Record<string, string> = {};
+  try {
     const ctrl = new AbortController();
-    const tid = setTimeout(() => ctrl.abort(), 3000);
-    try {
-      const res = await fetch(`${baseUrl}/v1/models`, {
-        signal: ctrl.signal,
-        headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : undefined,
-      });
-      clearTimeout(tid);
-      if (!res.ok) return 'disconnected';
+    const tid = setTimeout(() => ctrl.abort(), 1500);
+    const res = await fetch('http://127.0.0.1:20128/v1/models', { signal: ctrl.signal });
+    clearTimeout(tid);
+    if (res.ok) {
       const data = await res.json();
-      if (data && Array.isArray(data.data)) {
-        const fetched = data.data.map((m: any) => m.id);
-        if (fetched.length > 0) availableModels[key] = fetched;
-      }
-      return 'connected';
-    } catch {
-      clearTimeout(tid);
-      return 'disconnected';
+      if (Array.isArray(data?.data)) availableModels['9router'] = data.data.map((m: any) => m.id);
+      status['9router'] = 'connected';
+    } else {
+      status['9router'] = 'disconnected';
     }
-  };
-
-  statusMap['9router'] = await ping9Router('http://127.0.0.1:20128', '9router');
-
-  const publicUrl = (runtimeData.urls?.['9router-public'] || '')
-    .replace(/\/v1\/?$/, '').replace(/\/$/, '');
-  const publicKey = runtimeData.keys['9router-public'] || '';
-  statusMap['9router-public'] = publicUrl
-    ? await ping9Router(publicUrl, '9router-public', publicKey)
-    : 'disconnected';
-
-  const configured: Record<string, boolean> = {};
-  for (const [p, st] of Object.entries(statusMap)) {
-    configured[p] = st === 'connected';
+  } catch {
+    status['9router'] = 'disconnected';
   }
+
+  const configured: Record<string, boolean> = { '9router': status['9router'] === 'connected' };
 
   return NextResponse.json({
     providers: availableModels,
     configured,
-    status: statusMap,
+    status,
     labels,
-    current_provider: currentProvider,
-    current_model: currentModel,
+    current_provider: '',
+    current_model: '',
   });
 }

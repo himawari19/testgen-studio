@@ -1,10 +1,16 @@
 import { NextResponse } from 'next/server';
-import { getDB } from '../db';
+import { getDB, ensureSchema } from '../db';
+import { auth } from '@/auth';
 import fs from 'fs';
 import path from 'path';
 
 export async function GET(request: Request) {
   try {
+    const session = await auth();
+    const userId = session?.user?.email;
+    if (!userId) return NextResponse.json({ items: [], count: 0 });
+
+    await ensureSchema();
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search') || '';
     const limit = parseInt(searchParams.get('limit') || '50', 10);
@@ -25,7 +31,8 @@ export async function GET(request: Request) {
                END AS test_cases_count,
                created_at
         FROM history
-        WHERE url ILIKE ${searchParam} OR user_context ILIKE ${searchParam} OR page_title ILIKE ${searchParam}
+        WHERE user_id = ${userId}
+          AND (url ILIKE ${searchParam} OR user_context ILIKE ${searchParam} OR page_title ILIKE ${searchParam})
         ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`;
     } else {
       records = await sql`
@@ -38,6 +45,7 @@ export async function GET(request: Request) {
                END AS test_cases_count,
                created_at
         FROM history
+        WHERE user_id = ${userId}
         ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`;
     }
 
@@ -52,11 +60,16 @@ export async function GET(request: Request) {
 
 export async function DELETE() {
   try {
+    const session = await auth();
+    const userId = session?.user?.email;
+    if (!userId) return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 });
+
+    await ensureSchema();
     const sql = getDB();
     // Nuke entire results folder - all generated files live there
     const resultsDir = path.resolve(process.cwd(), 'tests/results');
     try { await fs.promises.rm(resultsDir, { recursive: true, force: true }); } catch {}
-    await sql`DELETE FROM history`;
+    await sql`DELETE FROM history WHERE user_id = ${userId}`;
     return NextResponse.json({
       success: true,
       message: 'Deleted all records'

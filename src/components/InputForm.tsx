@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { GenerateResponse } from "@/types";
+import { getApiKey } from "@/lib/keys";
 import { Send, Globe, MessageSquare, Loader2, Lock, ChevronDown, Code2, Zap, Plus, X } from "lucide-react";
 
 const API_URL = "";
@@ -233,6 +234,7 @@ export default function InputForm({
           user_context: finalContext,
           ai_provider: aiProvider,
           ai_model: aiModel,
+          api_key: getApiKey(aiProvider),
           framework,
           language,
           fast_mode: fastMode,

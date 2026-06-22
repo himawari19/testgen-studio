@@ -62,6 +62,21 @@ export async function initDB() {
   await db`CREATE INDEX IF NOT EXISTS idx_monitor_snapshots_monitor_id ON monitor_snapshots(monitor_id)`;
 }
 
+// ponytail: initDB() isn't auto-called (tables created externally), so add a
+// cheap idempotent migration that runs once per warm instance to add user_id.
+let migrated = false;
+export async function ensureSchema() {
+  if (migrated) return;
+  const db = getSQL();
+  await db`ALTER TABLE history ADD COLUMN IF NOT EXISTS user_id TEXT`;
+  await db`ALTER TABLE monitored_urls ADD COLUMN IF NOT EXISTS user_id TEXT`;
+  // monitors are per-user: a URL can be watched by many users
+  await db`ALTER TABLE monitored_urls DROP CONSTRAINT IF EXISTS monitored_urls_url_key`;
+  await db`CREATE UNIQUE INDEX IF NOT EXISTS monitored_urls_user_url_key ON monitored_urls(user_id, url)`;
+  await db`CREATE INDEX IF NOT EXISTS idx_history_user_id ON history(user_id)`;
+  migrated = true;
+}
+
 export function getDB() {
   return getSQL();
 }

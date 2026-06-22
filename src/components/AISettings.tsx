@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { ModelsResponse } from "@/types";
+import { getApiKey, getAllKeys, setApiKey, removeApiKey } from "@/lib/keys";
 import toast from "react-hot-toast";
 import { Settings, X, RefreshCw, ChevronDown, ExternalLink, Key, Check } from "lucide-react";
 
@@ -128,6 +129,20 @@ export default function AISettings({
     }
   }, []);
 
+  // Load client-side keys on mount → a saved key means the provider is connected
+  useEffect(() => {
+    const stored = getAllKeys();
+    const present = Object.keys(stored).filter((p) => stored[p]);
+    if (present.length === 0) return;
+    setProviders((prev) => {
+      const updated = { ...prev };
+      for (const p of present) {
+        if (updated[p]) updated[p] = { ...updated[p], status: "connected" };
+      }
+      return updated;
+    });
+  }, []);
+
   const getSaved9RouterPublic = () => {
     try {
       return JSON.parse(localStorage.getItem('9router_public') || '{}') as {
@@ -205,11 +220,6 @@ export default function AISettings({
         return;
       }
 
-      await axios.post(`${API_URL}/api/keys/save`, {
-        provider,
-        api_key: input,
-      });
-
       const validatedModels = Array.isArray(validateRes.data.models) ? validateRes.data.models : [];
       const nextModel = validatedModels[0] || '';
       if (provider === '9router-public') {
@@ -219,6 +229,9 @@ export default function AISettings({
           models: validatedModels,
           selectedModel: nextModel,
         }));
+      } else {
+        // ponytail: store key in browser only — never sent to our server for storage
+        setApiKey(provider, input);
       }
       if (validatedModels.length > 0) {
         setLocalProviderModels((prev) => ({ ...prev, [provider]: validatedModels }));
@@ -342,7 +355,7 @@ export default function AISettings({
     const saved9Router = provider === '9router-public' ? getSaved9RouterPublic() : {};
     const apiKey = provider === '9router-public'
       ? `${saved9Router.url || ''} ${saved9Router.key || ''}`.trim()
-      : undefined;
+      : getApiKey(provider);
     if (provider === '9router-public' && !saved9Router.url) {
       toast.error("Click update and enter the 9Router Public URL once.");
       setProviders((prev) => ({
@@ -445,10 +458,7 @@ export default function AISettings({
         return;
       }
 
-      await axios.post(`${API_URL}/api/keys/revoke`, {
-        provider,
-        api_key: "",
-      });
+      removeApiKey(provider);
 
       setProviders((prev) => ({
         ...prev,
@@ -456,11 +466,11 @@ export default function AISettings({
       }));
 
       toast.success(`${PROVIDER_INFO[provider]?.label} disconnected`);
-      
+
       if (selectedProvider === provider) {
         onProviderChange("", "");
       }
-      
+
       await refreshModels();
     } catch {
       toast.error("Failed to revoke key");
@@ -765,7 +775,7 @@ export default function AISettings({
         })}
 
         <p className="text-[11px] text-slate-400 text-center mt-4">
-          Keys are stored in server memory only and reset on restart.
+          Keys are stored in your browser only and never sent to our server.
         </p>
       </div>
     );
@@ -1042,7 +1052,7 @@ export default function AISettings({
 
           <div className="mt-4 pt-3 border-t border-slate-100">
             <p className="text-[11px] text-slate-400 text-center">
-              Keys are stored in server memory only and reset on restart.
+              Keys are stored in your browser only and never sent to our server.
             </p>
           </div>
         </div>

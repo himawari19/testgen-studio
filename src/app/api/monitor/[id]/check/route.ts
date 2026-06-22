@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getDB } from '../../../db';
+import { auth } from '@/auth';
 import { crawlPage } from '../../../crawler';
 import crypto from 'crypto';
 
@@ -8,8 +9,12 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
+    const session = await auth();
+    const userId = session?.user?.email;
+    if (!userId) return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 });
+
     const sql = getDB();
-    const rows = await sql`SELECT * FROM monitored_urls WHERE id = ${params.id}`;
+    const rows = await sql`SELECT * FROM monitored_urls WHERE id = ${params.id} AND user_id = ${userId}`;
     const record = rows[0] ?? null;
 
     if (!record) {

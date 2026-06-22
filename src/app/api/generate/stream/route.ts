@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { crawlPage, PageData } from '../../crawler';
 import { generateTestCases, generateScriptForTestCase, getFastModel, getFileExtension } from '../../ai/analyzer';
-import { getDB } from '../../db';
-import { loadKeys } from '../../keys/store';
+import { getDB, ensureSchema } from '../../db';
+import { auth as getSession } from '@/auth';
 import crypto from 'crypto';
 
 // ponytail: in-memory DOM cache keyed by URL, TTL 10 menit
@@ -74,7 +74,9 @@ function formatTestCaseTable(testCases: any[]): string {
 
 export async function POST(request: Request) {
   try {
-    const { url, user_context, ai_provider, ai_model, auth, framework, language, fast_mode, generation_mode, output_mode, nine_router_public_url, nine_router_public_key } = await request.json();
+    const { url, user_context, ai_provider, ai_model, api_key, auth, framework, language, fast_mode, generation_mode, output_mode, nine_router_public_url, nine_router_public_key } = await request.json();
+    const session = await getSession();
+    const userId = session?.user?.email || null;
     const modeMinTC: Record<string, number> = { quick: 10, standard: 30, thorough: 50 };
     const minTestCases = modeMinTC[generation_mode] ?? 10;
     const now = new Date();
@@ -98,11 +100,10 @@ export async function POST(request: Request) {
           const publicBaseUrl = p === '9router-public'
             ? String(nine_router_public_url || '').replace(/\/v1\/?$/, '').replace(/\/$/, '')
             : '';
-          const runtimeKeys = loadKeys().keys;
-          // ponytail: 9router uses local key, 9router-public uses stored public API key
+          // ponytail: keys are client-side only — sent per request, never stored server-side
           const apiKey = p === '9router' ? '9router-local-key'
-            : p === '9router-public' ? (nine_router_public_key || runtimeKeys['9router-public'] || '')
-            : (runtimeKeys[p] || '');
+            : p === '9router-public' ? (nine_router_public_key || '')
+            : (api_key || '');
 
           // cases-only = planning only, fast model is sufficient; fast_mode also forces fast model
           const stage1Model = (fast_mode || output_mode === 'cases') ? getFastModel(p, ai_model || '') : (ai_model || '');
@@ -209,12 +210,16 @@ export async function POST(request: Request) {
           const id = crypto.randomUUID();
           const now = new Date().toISOString();
 
-          const sql = getDB();
-          await sql`INSERT INTO history
-             (id, url, user_context, page_title, elements_found, ai_provider, ai_model,
-              test_case_table, test_cases_json, scripts_json, scripts_count, created_at, updated_at)
-             VALUES (${id}, ${url}, ${effectiveContext}, ${pageData.title}, ${pageData.elements.length}, ${p}, ${ai_model || ''},
-              ${table}, ${JSON.stringify(testCases)}, ${JSON.stringify(scripts)}, ${scripts.length}, ${now}, ${now})`;
+          // Only persist history for signed-in users (guests can generate but nothing is saved)
+          if (userId) {
+            await ensureSchema();
+            const sql = getDB();
+            await sql`INSERT INTO history
+               (id, url, user_context, page_title, elements_found, ai_provider, ai_model,
+                test_case_table, test_cases_json, scripts_json, scripts_count, created_at, updated_at, user_id)
+               VALUES (${id}, ${url}, ${effectiveContext}, ${pageData.title}, ${pageData.elements.length}, ${p}, ${ai_model || ''},
+                ${table}, ${JSON.stringify(testCases)}, ${JSON.stringify(scripts)}, ${scripts.length}, ${now}, ${now}, ${userId})`;
+          }
 
           sendEvent('complete', 'Generation complete!', {
             result: {

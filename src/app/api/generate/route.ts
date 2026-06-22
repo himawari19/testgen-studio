@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import { crawlPage } from '../crawler';
 import { analyzePage } from '../ai/analyzer';
-import { getDB } from '../db';
+import { getDB, ensureSchema } from '../db';
+import { auth as getSession } from '@/auth';
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
-import { loadKeys } from '../keys/store';
 
 function formatTestCaseTable(testCases: any[]): string {
   const header = "| # | Scenario | Input | Expected Result | File Name | Script Location |";
@@ -18,13 +18,15 @@ function formatTestCaseTable(testCases: any[]): string {
 
 export async function POST(request: Request) {
   try {
-    const { url, user_context, ai_provider, ai_model, auth } = await request.json();
+    const { url, user_context, ai_provider, ai_model, api_key, auth } = await request.json();
     if (!url || !user_context) {
       return NextResponse.json({ detail: 'URL and user_context are required' }, { status: 400 });
     }
 
+    const session = await getSession();
+    const userId = session?.user?.email || null;
     const p = (ai_provider || 'openai').toLowerCase().trim();
-    const apiKey = loadKeys().keys[p] || '';
+    const apiKey = api_key || '';
 
     // Step 1: Crawl
     const pageData = await crawlPage(url, auth);
@@ -57,12 +59,15 @@ export async function POST(request: Request) {
       }
     }
 
-    const sql = getDB();
-    await sql`INSERT INTO history
-       (id, url, user_context, page_title, elements_found, ai_provider, ai_model,
-        test_case_table, scripts_json, scripts_count, created_at, updated_at)
-       VALUES (${id}, ${url}, ${user_context}, ${pageData.title}, ${pageData.elements.length}, ${p}, ${ai_model || ''},
-        ${table}, ${JSON.stringify(scripts)}, ${scripts.length}, ${now}, ${now})`;
+    if (userId) {
+      await ensureSchema();
+      const sql = getDB();
+      await sql`INSERT INTO history
+         (id, url, user_context, page_title, elements_found, ai_provider, ai_model,
+          test_case_table, scripts_json, scripts_count, created_at, updated_at, user_id)
+         VALUES (${id}, ${url}, ${user_context}, ${pageData.title}, ${pageData.elements.length}, ${p}, ${ai_model || ''},
+          ${table}, ${JSON.stringify(scripts)}, ${scripts.length}, ${now}, ${now}, ${userId})`;
+    }
 
     return NextResponse.json({
       test_case_table: table,

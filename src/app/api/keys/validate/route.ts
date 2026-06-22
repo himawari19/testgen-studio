@@ -1,6 +1,14 @@
 import { NextResponse } from 'next/server';
 import { callLLM } from '../../ai/llm';
-import { loadKeys, parse9RouterPublicInput } from '../store';
+
+// 9Router public input may be "https://host/v1 sk-key" — split URL and key.
+function parse9RouterPublicInput(input: string) {
+  const raw = input.trim();
+  const urlMatch = raw.match(/https?:\/\/\S+/);
+  const url = urlMatch?.[0].replace(/\/v1\/?$/, '').replace(/\/$/, '') || '';
+  const key = (urlMatch ? raw.replace(urlMatch[0], '') : raw).trim().split(/\s+/)[0] || '';
+  return { url, key };
+}
 
 export async function POST(request: Request) {
   try {
@@ -14,18 +22,11 @@ export async function POST(request: Request) {
     const publicInput = p === '9router-public' ? parse9RouterPublicInput(apiKey) : null;
     if (publicInput) apiKey = publicInput.key;
 
-    if (!apiKey) {
-      if (p === '9router') {
-        apiKey = '9router-local-key';
-      } else if (p === '9router-public') {
-        // URL must be supplied by user — no fallback
-      } else {
-        // ponytail: Fallback to loading existing key from store or environment
-        apiKey = loadKeys().keys[p] || '';
-      }
+    if (p === '9router' && !apiKey) {
+      apiKey = '9router-local-key';
     }
 
-    if (p !== '9router-public' && (!apiKey || apiKey.length < 10)) {
+    if (p !== '9router-public' && p !== '9router' && (!apiKey || apiKey.length < 10)) {
       return NextResponse.json({ valid: false, message: 'API key is empty or too short' });
     }
 
@@ -33,7 +34,7 @@ export async function POST(request: Request) {
     let testModel = model;
     let models: string[] = [];
     if (!testModel && p === '9router') {
-      // ponytail: dynamically fetch first available model from local 9Router config to avoid hardcoding fallback
+      // ponytail: dynamically fetch first available model from local 9Router
       try {
         const res = await fetch('http://127.0.0.1:20128/v1/models');
         if (res.ok) {
@@ -49,9 +50,7 @@ export async function POST(request: Request) {
       }
     } else if (!testModel && p === '9router-public') {
       // apiKey IS the tunnel URL — normalize: strip trailing /v1 so we control the path
-      const runtimeData = loadKeys();
-      const tunnelUrl = (publicInput?.url || runtimeData.urls?.['9router-public'] || '')
-        .replace(/\/v1\/?$/, '').replace(/\/$/, '');
+      const tunnelUrl = (publicInput?.url || '').replace(/\/v1\/?$/, '').replace(/\/$/, '');
       if (!tunnelUrl) throw new Error('Enter 9Router public URL and API key in the same field.');
       try {
         const res = await fetch(`${tunnelUrl}/v1/models`, {
@@ -78,10 +77,11 @@ export async function POST(request: Request) {
       testModel = '';
     }
     const usage = { totalTokens: 0 };
-    await callLLM(p, testModel, apiKey, 'You are a test client. Answer "hi".', 'hi', false, 5, usage);
+    const publicBaseUrl = p === '9router-public' ? (publicInput?.url || '') : undefined;
+    await callLLM(p, testModel, apiKey, 'You are a test client. Answer "hi".', 'hi', false, 5, usage, publicBaseUrl);
 
-    return NextResponse.json({ 
-      valid: true, 
+    return NextResponse.json({
+      valid: true,
       message: 'API key is valid and connected',
       tokens: usage.totalTokens,
       model: testModel,

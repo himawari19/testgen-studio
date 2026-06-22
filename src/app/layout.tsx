@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Toaster } from "react-hot-toast";
+import Providers from "@/components/Providers";
 
 export const metadata: Metadata = {
   title: "TestGen Studio - Build smarter test cases and automation scripts with AI",
@@ -15,6 +16,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full">
       <body className="h-full">
+        <Providers>
         <Toaster
           position="top-right"
           toastOptions={{
@@ -29,6 +31,7 @@ export default function RootLayout({
           }}
         />
         {children}
+        </Providers>
       </body>
     </html>
   );
