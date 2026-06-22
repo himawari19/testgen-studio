@@ -57,7 +57,7 @@ interface TestCaseTableProps {
   url?: string;
 }
 
-type RunState = { status: "pending" | "running" | "passed" | "failed"; actual?: string };
+type RunState = { status: "pending" | "running" | "passed" | "failed" | "blocked"; actual?: string };
 
 const TYPE_OPTS     = ["ALL", "POSITIVE", "NEGATIVE", "EDGE", "SECURITY", "BOUNDARY"] as const;
 const STATUS_OPTS   = ["ALL", "PENDING", "PASSED", "FAILED", "BLOCKED"] as const;
