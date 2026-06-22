@@ -55,10 +55,14 @@ export async function POST(request: Request) {
       }
     } else if (!testModel && p === '9router-public') {
       // apiKey IS the tunnel URL — normalize: strip trailing /v1 so we control the path
-      const tunnelUrl = apiKey.replace(/\/v1\/?$/, '').replace(/\/$/, '');
-      apiKey = tunnelUrl; // store normalized form
+      const runtimeData = loadKeys();
+      const tunnelUrl = (runtimeData.urls?.['9router-public'] || process.env.NINE_ROUTER_PUBLIC_URL || '')
+        .replace(/\/v1\/?$/, '').replace(/\/$/, '');
+      if (!tunnelUrl) throw new Error('NINE_ROUTER_PUBLIC_URL is not configured');
       try {
-        const res = await fetch(`${tunnelUrl}/v1/models`);
+        const res = await fetch(`${tunnelUrl}/v1/models`, {
+          headers: { Authorization: `Bearer ${apiKey}` },
+        });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         testModel = data?.data?.[0]?.id || '';

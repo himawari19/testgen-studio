@@ -105,9 +105,9 @@ export async function POST(request: Request) {
             alibaba: 'ALIBABA_API_KEY',
           };
           const envVar = envMap[p] || 'OPENAI_API_KEY';
-          // ponytail: 9router uses local key, 9router-public uses stored tunnel URL
+          // ponytail: 9router uses local key, 9router-public uses stored public API key
           const apiKey = p === '9router' ? '9router-local-key'
-            : p === '9router-public' ? (loadKeys().keys['9router-public'] || process.env.NINE_ROUTER_PUBLIC_URL || '')
+            : p === '9router-public' ? (loadKeys().keys['9router-public'] || process.env.NINE_ROUTER_PUBLIC_API_KEY || '')
             : (process.env[envVar] || '');
 
           // cases-only = planning only, fast model is sufficient; fast_mode also forces fast model

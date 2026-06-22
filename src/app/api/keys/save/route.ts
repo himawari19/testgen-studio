@@ -9,10 +9,7 @@ export async function POST(request: Request) {
     }
 
     const p = provider.toLowerCase().trim();
-    // normalize 9router-public URL: strip /v1 suffix so consumers can append /v1/... safely
-    const key = p === '9router-public'
-      ? api_key.trim().replace(/\/v1\/?$/, '').replace(/\/$/, '')
-      : api_key.trim();
+    const key = api_key.trim();
 
     const data = loadKeys();
     data.keys[p] = key;
@@ -31,7 +28,7 @@ export async function POST(request: Request) {
       deepseek:         'DEEPSEEK_API_KEY',
       moonshot:         'MOONSHOT_API_KEY',
       alibaba:          'ALIBABA_API_KEY',
-      '9router-public': 'NINE_ROUTER_PUBLIC_URL',
+      '9router-public': 'NINE_ROUTER_PUBLIC_API_KEY',
     };
     if (envMap[p]) {
       process.env[envMap[p]] = key;

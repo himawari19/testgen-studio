@@ -80,7 +80,7 @@ const PROVIDER_INFO: Record<string, { label: string; color: string; placeholder:
   '9router-public': {
     label: "9Router (Public)",
     color: "bg-violet-500",
-    placeholder: "https://your-tunnel.trycloudflare.com",
+    placeholder: "sk-9router-...",
     docUrl: "https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/",
   },
 };
@@ -527,9 +527,9 @@ export default function AISettings({
               )}
               {provider === '9router-public' && state.status !== "connected" && (
                 <div className="mt-2 text-xs text-slate-500 bg-slate-50 p-2.5 rounded-lg border border-slate-100">
-                  <p className="font-semibold text-slate-600 mb-0.5">Enter your Cloudflare Tunnel URL:</p>
+                  <p className="font-semibold text-slate-600 mb-0.5">Enter your 9Router API key:</p>
                   <code className="block bg-slate-800 text-slate-200 px-2 py-1 rounded text-[11px] font-mono select-all">
-                    https://your-tunnel.trycloudflare.com
+                    sk-9router-...
                   </code>
                 </div>
               )}

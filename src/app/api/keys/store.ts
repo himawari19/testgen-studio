@@ -6,6 +6,7 @@ const storePath = path.join(process.cwd(), '.runtime_keys.json');
 
 interface KeyData {
   keys: Record<string, string>;
+  urls?: Record<string, string>;
   validated: string[];
 }
 
@@ -17,7 +18,7 @@ const ENV_MAP: Record<string, string> = {
   deepseek:         'DEEPSEEK_API_KEY',
   moonshot:         'MOONSHOT_API_KEY',
   alibaba:          'ALIBABA_API_KEY',
-  '9router-public': 'NINE_ROUTER_PUBLIC_URL',
+  '9router-public': 'NINE_ROUTER_PUBLIC_API_KEY',
 };
 
 export function loadKeys(): KeyData {
@@ -29,7 +30,9 @@ export function loadKeys(): KeyData {
       const val = process.env[envVar];
       if (val) { keys[provider] = val; validated.push(provider); }
     }
-    return { keys, validated };
+    const urls: Record<string, string> = {};
+    if (process.env.NINE_ROUTER_PUBLIC_URL) urls['9router-public'] = process.env.NINE_ROUTER_PUBLIC_URL;
+    return { keys, urls, validated };
   }
   // Local: read from file
   if (!fs.existsSync(storePath)) return { keys: {}, validated: [] };

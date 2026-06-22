@@ -1,3 +1,5 @@
+import { loadKeys } from '../keys/store';
+
 export async function callLLM(
   provider: string,
   model: string,
@@ -10,7 +12,7 @@ export async function callLLM(
 ): Promise<string> {
   const p = provider.toLowerCase().trim();
   const effectiveKey = (p === '9router' && !apiKey) ? '9router-local-key' : apiKey;
-  if (!effectiveKey && p !== '9router-public') {
+  if (!effectiveKey) {
     throw new Error(`API key for provider ${p} is empty`);
   }
 
@@ -110,10 +112,8 @@ export async function callLLM(
       if (!resolvedModel) throw new Error('A specific model/combo must be provided for 9Router');
       break;
     case '9router-public':
-      if (!effectiveKey || !effectiveKey.startsWith('http')) {
-        throw new Error('9Router Public URL not configured. Enter your Cloudflare Tunnel URL in AI Settings.');
-      }
-      baseURL = `${effectiveKey.replace(/\/v1\/?$/, '').replace(/\/$/, '')}/v1/chat/completions`;
+      baseURL = `${(loadKeys().urls?.['9router-public'] || process.env.NINE_ROUTER_PUBLIC_URL || '').replace(/\/v1\/?$/, '').replace(/\/$/, '')}/v1/chat/completions`;
+      if (baseURL === '/v1/chat/completions') throw new Error('NINE_ROUTER_PUBLIC_URL is not configured');
       if (!resolvedModel) throw new Error('A specific model must be provided for 9Router');
       break;
     case 'groq':

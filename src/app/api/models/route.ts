@@ -106,11 +106,14 @@ export async function GET() {
   }
 
   // ponytail: Dynamically validate 9Router (local + public) and fetch models with a safe timeout
-  const ping9Router = async (baseUrl: string, key: string) => {
+  const ping9Router = async (baseUrl: string, key: string, apiKey = '') => {
     const ctrl = new AbortController();
     const tid = setTimeout(() => ctrl.abort(), 3000);
     try {
-      const res = await fetch(`${baseUrl}/v1/models`, { signal: ctrl.signal });
+      const res = await fetch(`${baseUrl}/v1/models`, {
+        signal: ctrl.signal,
+        headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : undefined,
+      });
       clearTimeout(tid);
       if (!res.ok) return 'disconnected';
       const data = await res.json();
@@ -127,10 +130,11 @@ export async function GET() {
 
   statusMap['9router'] = await ping9Router('http://127.0.0.1:20128', '9router');
 
-  const publicUrl = (runtimeData.keys['9router-public'] || process.env.NINE_ROUTER_PUBLIC_URL || '')
+  const publicUrl = (runtimeData.urls?.['9router-public'] || process.env.NINE_ROUTER_PUBLIC_URL || '')
     .replace(/\/v1\/?$/, '').replace(/\/$/, '');
+  const publicKey = runtimeData.keys['9router-public'] || process.env.NINE_ROUTER_PUBLIC_API_KEY || '';
   statusMap['9router-public'] = publicUrl
-    ? await ping9Router(publicUrl, '9router-public')
+    ? await ping9Router(publicUrl, '9router-public', publicKey)
     : 'disconnected';
 
   const configured: Record<string, boolean> = {};
