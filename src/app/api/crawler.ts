@@ -1,5 +1,5 @@
-import { chromium } from 'playwright';
-import url from 'url';
+import * as cheerio from 'cheerio';
+import axios, { AxiosRequestConfig } from 'axios';
 
 export interface DOMElement {
   tag: string;
@@ -29,157 +29,136 @@ export interface AuthConfig {
   form_fields?: Record<string, string>;
 }
 
-function extractElements() {
-    const selectors = 'input, button, select, textarea, a[href], [role="button"], [type="submit"]';
-    const nodes = Array.from(document.querySelectorAll(selectors));
-    const results = [];
-    const seenKeys = new Set();
+const SOCIAL_RE = /facebook\.com|twitter\.com|x\.com|linkedin\.com|instagram\.com|youtube\.com|pinterest\.com|github\.com|tiktok\.com/i;
 
-    for (const el of nodes) {
-        const style = window.getComputedStyle(el);
-        if (style.display === 'none' || style.visibility === 'hidden') continue;
+function buildCssSelector(tag: string, el: any, $: cheerio.CheerioAPI): string {
+  const $el = $(el);
+  const id = $el.attr('id');
+  const name = $el.attr('name');
+  const testid = $el.attr('data-testid');
+  const placeholder = $el.attr('placeholder');
+  const type = $el.attr('type');
+  if (id) return `#${id}`;
+  if (name) return `${tag}[name='${name}']`;
+  if (testid) return `[data-testid='${testid}']`;
+  if (placeholder) return `${tag}[placeholder='${placeholder}']`;
+  if (type && tag === 'input') return `input[type='${type}']`;
+  return tag;
+}
 
-        // ponytail: skip social media links to cut prompt noise
-        const tag = el.tagName.toLowerCase();
-        if (tag === 'a') {
-            const href = el.getAttribute('href');
-            if (href && /facebook\.com|twitter\.com|x\.com|linkedin\.com|instagram\.com|youtube\.com|pinterest\.com|github\.com|tiktok\.com/i.test(href)) {
-                continue;
-            }
-        }
+function extractElements($: cheerio.CheerioAPI): DOMElement[] {
+  const results: DOMElement[] = [];
+  const seenKeys = new Set<string>();
 
-        let labelText = '';
-        if (el.id) {
-            const label = document.querySelector("label[for='" + el.id + "']");
-            if (label) labelText = label.textContent ? label.textContent.trim() : '';
-        }
-        if (!labelText) {
-            const parentLabel = el.closest('label');
-            if (parentLabel) labelText = parentLabel.textContent ? parentLabel.textContent.trim() : '';
-        }
+  $('input, button, select, textarea, a[href], [role="button"], [type="submit"]').each((_i, el) => {
+    const $el = $(el);
 
-        const textContent = el.textContent ? el.textContent.trim().substring(0, 40) : '';
+    // ponytail: skip explicitly hidden elements (can't compute styles without a browser)
+    const style = $el.attr('style') || '';
+    if (/display\s*:\s*none|visibility\s*:\s*hidden/.test(style)) return;
+    if ($el.attr('hidden') !== undefined) return;
 
-        // ponytail: filter out completely anonymous/unidentifiable elements
-        const hasId = !!el.id;
-        const hasName = !!el.getAttribute('name');
-        const hasTestId = !!el.getAttribute('data-testid');
-        const hasPlaceholder = !!el.getAttribute('placeholder');
-        const hasAria = !!el.getAttribute('aria-label');
-        const hasLabel = !!labelText;
-        const hasText = !!textContent;
-        const isInput = tag === 'input' || tag === 'textarea' || tag === 'select';
+    const tag = (el as any).tagName?.toLowerCase() || '';
 
-        if (!hasId && !hasName && !hasTestId && !hasPlaceholder && !hasAria && !hasLabel && !hasText && !isInput) {
-            continue;
-        }
-
-        let cssSelector = '';
-        if (el.id) {
-            cssSelector = "#" + el.id;
-        } else if (el.getAttribute('name')) {
-            cssSelector = tag + "[name='" + el.getAttribute('name') + "']";
-        } else if (el.getAttribute('data-testid')) {
-            cssSelector = "[data-testid='" + el.getAttribute('data-testid') + "']";
-        } else if (el.getAttribute('placeholder')) {
-            cssSelector = tag + "[placeholder='" + el.getAttribute('placeholder') + "']";
-        } else if (el.getAttribute('type') && tag === 'input') {
-            cssSelector = "input[type='" + el.getAttribute('type') + "']";
-        } else {
-            cssSelector = tag;
-        }
-
-        // ponytail: deduplicate exact duplicate selectors with the same text to avoid token waste
-        const dupKey = cssSelector + '::' + textContent;
-        if (seenKeys.has(dupKey)) continue;
-        seenKeys.add(dupKey);
-
-        results.push({
-            tag,
-            id: el.id || null,
-            name: el.getAttribute('name') || null,
-            type: el.getAttribute('type') || null,
-            placeholder: el.getAttribute('placeholder') || null,
-            aria_label: el.getAttribute('aria-label') || null,
-            label_text: labelText || null,
-            text_content: textContent || null,
-            css_selector: cssSelector
-        });
+    // skip social links
+    if (tag === 'a') {
+      const href = $el.attr('href') || '';
+      if (SOCIAL_RE.test(href)) return;
     }
 
-    return results;
+    // label lookup
+    let labelText = '';
+    const id = $el.attr('id') || null;
+    if (id) {
+      const labelEl = $(`label[for='${id}']`);
+      if (labelEl.length) labelText = labelEl.text().trim();
+    }
+    if (!labelText) {
+      const parentLabel = $el.closest('label');
+      if (parentLabel.length) labelText = parentLabel.text().trim();
+    }
+
+    const textContent = ($el.text() || '').trim().substring(0, 40);
+    const name = $el.attr('name') || null;
+    const type = $el.attr('type') || null;
+    const placeholder = $el.attr('placeholder') || null;
+    const aria_label = $el.attr('aria-label') || null;
+    const testid = $el.attr('data-testid') || null;
+    const isInput = tag === 'input' || tag === 'textarea' || tag === 'select';
+
+    // filter anonymous/unidentifiable elements
+    if (!id && !name && !testid && !placeholder && !aria_label && !labelText && !textContent && !isInput) return;
+
+    const cssSelector = buildCssSelector(tag, el, $);
+
+    const dupKey = `${cssSelector}::${textContent}`;
+    if (seenKeys.has(dupKey)) return;
+    seenKeys.add(dupKey);
+
+    results.push({
+      tag,
+      id,
+      name,
+      type,
+      placeholder,
+      aria_label,
+      label_text: labelText || null,
+      text_content: textContent || null,
+      css_selector: cssSelector,
+    });
+  });
+
+  return results;
 }
 
 export async function crawlPage(targetURL: string, auth?: AuthConfig): Promise<PageData> {
   console.log('Crawling URL:', targetURL);
 
-  const browser = await chromium.launch({ headless: true });
-  try {
-    const contextOptions: any = {
-      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-    };
+  const headers: Record<string, string> = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+  };
+  const config: AxiosRequestConfig = { headers, timeout: 30000, maxRedirects: 5 };
 
-    // Basic Auth
-    if (auth?.auth_type === 'basic') {
-      contextOptions.httpCredentials = {
-        username: auth.username || '',
-        password: auth.password || ''
-      };
-    }
-
-    const context = await browser.newContext(contextOptions);
-
-    // Bearer Token
-    if (auth?.auth_type === 'bearer' && auth.token) {
-      await context.setExtraHTTPHeaders({
-        Authorization: `Bearer ${auth.token}`
-      });
-    }
-
-    // Cookies
-    if (auth?.auth_type === 'cookie' && auth.cookies) {
-      const parsedURL = url.parse(targetURL);
-      const cookiesList = Object.entries(auth.cookies).map(([name, value]) => ({
-        name,
-        value,
-        domain: parsedURL.hostname || '',
-        path: '/'
-      }));
-      await context.addCookies(cookiesList);
-    }
-
-    const page = await context.newPage();
-
-    // Form Auth
-    if (auth?.auth_type === 'form' && auth.login_url) {
-      try {
-        console.log('Executing Form Login at:', auth.login_url);
-        await page.goto(auth.login_url, { waitUntil: 'domcontentloaded', timeout: 30000 });
-        if (auth.form_fields) {
-          for (const [selector, value] of Object.entries(auth.form_fields)) {
-            await page.fill(selector, value);
-          }
-        }
-        await page.keyboard.press('Enter');
-        await page.waitForLoadState('networkidle').catch(() => {});
-      } catch (err) {
-        console.warn('Form auth failed:', err);
-      }
-    }
-
-    // Go to target
-    await page.goto(targetURL, { waitUntil: 'domcontentloaded', timeout: 30000 });
-    await page.waitForLoadState('networkidle').catch(() => {});
-
-    const title = (await page.title()) || 'Untitled Page';
-    const elements = await page.evaluate(extractElements) as DOMElement[];
-
-    return {
-      title,
-      url: targetURL,
-      elements
-    };
-  } finally {
-    await browser.close();
+  if (auth?.auth_type === 'bearer' && auth.token) {
+    headers['Authorization'] = `Bearer ${auth.token}`;
   }
+
+  if (auth?.auth_type === 'cookie' && auth.cookies) {
+    headers['Cookie'] = Object.entries(auth.cookies).map(([k, v]) => `${k}=${v}`).join('; ');
+  }
+
+  // ponytail: basic auth via axios config
+  if (auth?.auth_type === 'basic' && auth.username) {
+    config.auth = { username: auth.username, password: auth.password || '' };
+  }
+
+  // form auth: POST to login URL, carry session cookies forward
+  if (auth?.auth_type === 'form' && auth.login_url && auth.form_fields) {
+    try {
+      const params = new URLSearchParams(auth.form_fields).toString();
+      const loginRes = await axios.post(auth.login_url, params, {
+        headers: { ...headers, 'Content-Type': 'application/x-www-form-urlencoded' },
+        timeout: 30000,
+        maxRedirects: 5,
+        validateStatus: () => true,
+      });
+      const rawCookies: string | string[] | undefined = loginRes.headers['set-cookie'];
+      if (rawCookies) {
+        const list: string[] = Array.isArray(rawCookies) ? rawCookies : [rawCookies];
+        const cookieStr = list.map(c => c.split(';')[0]).join('; ');
+        headers['Cookie'] = cookieStr;
+      }
+    } catch (err) {
+      console.warn('Form auth failed:', err);
+    }
+  }
+
+  const res = await axios.get(targetURL, config);
+  const html = typeof res.data === 'string' ? res.data : String(res.data);
+
+  const $ = cheerio.load(html);
+  const title = $('title').text().trim() || 'Untitled Page';
+  const elements = extractElements($);
+
+  return { title, url: targetURL, elements };
 }
