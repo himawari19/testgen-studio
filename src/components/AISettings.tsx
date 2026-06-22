@@ -24,6 +24,7 @@ type ConnectionStatus = "connected" | "has_key" | "disconnected";
 interface ProviderState {
   status: ConnectionStatus;
   keyInput: string;
+  urlInput?: string;
   showInput: boolean;
   validating: boolean;
 }
@@ -139,7 +140,10 @@ export default function AISettings({
 
   const handleConnectKey = async (provider: string) => {
     const state = providers[provider];
-    if (!state.keyInput.trim()) {
+    const input = provider === '9router-public'
+      ? `${state.urlInput || ''} ${state.keyInput || ''}`.trim()
+      : state.keyInput.trim();
+    if (!input) {
       toast.error("Please enter an API key first");
       return;
     }
@@ -152,7 +156,7 @@ export default function AISettings({
     try {
       const validateRes = await axios.post(`${API_URL}/api/keys/validate`, {
         provider,
-        api_key: state.keyInput.trim(),
+        api_key: input,
       });
 
       if (!validateRes.data.valid) {
@@ -166,7 +170,7 @@ export default function AISettings({
 
       await axios.post(`${API_URL}/api/keys/save`, {
         provider,
-        api_key: state.keyInput.trim(),
+        api_key: input,
       });
 
       const tokensInfo = validateRes.data.tokens !== undefined ? ` (tokens: ${validateRes.data.tokens})` : '';
@@ -177,6 +181,7 @@ export default function AISettings({
         [provider]: {
           status: "connected",
           keyInput: "",
+          urlInput: "",
           showInput: false,
           validating: false,
         },
@@ -538,6 +543,20 @@ export default function AISettings({
               {provider !== '9router' && state.showInput && (
                 <div className="mt-3 pt-3 border-t border-slate-100">
                   <div className="flex gap-2">
+                    {provider === '9router-public' && (
+                      <input
+                        type="text"
+                        value={state.urlInput || ""}
+                        onChange={(e) =>
+                          setProviders((prev) => ({
+                            ...prev,
+                            [provider]: { ...prev[provider], urlInput: e.target.value },
+                          }))
+                        }
+                        placeholder="https://9router-laptop.lotus.my.id/v1"
+                        className="input-field text-sm font-mono py-2"
+                      />
+                    )}
                     <input
                       type={provider === '9router-public' ? "text" : "password"}
                       value={state.keyInput}
@@ -547,7 +566,7 @@ export default function AISettings({
                           [provider]: { ...prev[provider], keyInput: e.target.value },
                         }))
                       }
-                      placeholder={info.placeholder}
+                      placeholder={provider === '9router-public' ? "API key optional if Require API key is off" : info.placeholder}
                       className="input-field text-sm font-mono py-2"
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
@@ -559,7 +578,7 @@ export default function AISettings({
                     <button
                       type="button"
                       onClick={() => handleConnectKey(provider)}
-                      disabled={state.validating || !state.keyInput.trim()}
+                      disabled={state.validating || !(provider === '9router-public' ? (state.urlInput || state.keyInput || '').trim() : state.keyInput.trim())}
                       className="btn-primary text-xs whitespace-nowrap px-3"
                     >
                       {state.validating ? "..." : "Connect"}
@@ -796,6 +815,20 @@ export default function AISettings({
                   {provider !== '9router' && state.showInput && (
                     <div className="mt-3 pt-3 border-t border-slate-100">
                       <div className="flex gap-2">
+                        {provider === '9router-public' && (
+                          <input
+                            type="text"
+                            value={state.urlInput || ""}
+                            onChange={(e) =>
+                              setProviders((prev) => ({
+                                ...prev,
+                                [provider]: { ...prev[provider], urlInput: e.target.value },
+                              }))
+                            }
+                            placeholder="https://9router-laptop.lotus.my.id/v1"
+                            className="input-field text-sm font-mono py-2"
+                          />
+                        )}
                         <input
                           type={provider === '9router-public' ? "text" : "password"}
                           value={state.keyInput}
@@ -805,7 +838,7 @@ export default function AISettings({
                               [provider]: { ...prev[provider], keyInput: e.target.value },
                             }))
                           }
-                          placeholder={info.placeholder}
+                          placeholder={provider === '9router-public' ? "API key optional if Require API key is off" : info.placeholder}
                           className="input-field text-sm font-mono py-2"
                           onKeyDown={(e) => {
                             if (e.key === "Enter") {
@@ -817,7 +850,7 @@ export default function AISettings({
                         <button
                           type="button"
                           onClick={() => handleConnectKey(provider)}
-                          disabled={state.validating || !state.keyInput.trim()}
+                          disabled={state.validating || !(provider === '9router-public' ? (state.urlInput || state.keyInput || '').trim() : state.keyInput.trim())}
                           className="btn-primary text-xs whitespace-nowrap px-3"
                         >
                           {state.validating ? "..." : "Connect"}
