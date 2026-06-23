@@ -7,9 +7,9 @@
 
 ## Stack
 
-- Next.js App Router (fullstack — API routes in `src/app/api/`)
-- Neon PostgreSQL (`@neondatabase/serverless`) — requires `DATABASE_URL` env var
-- Vercel deployment — filesystem is read-only, no SQLite, no local file writes
+- Next.js App Router (fullstack - API routes in `src/app/api/`)
+- Neon PostgreSQL (`@neondatabase/serverless`) - requires `DATABASE_URL` env var
+- Vercel deployment - filesystem is read-only, no SQLite, no local file writes
 
 ## Local dev
 

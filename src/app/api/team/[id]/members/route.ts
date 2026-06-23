@@ -20,7 +20,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   }
 }
 
-// DELETE /api/team/[id]/members?user=email — leave or remove member
+// DELETE /api/team/[id]/members?user=email - leave or remove member
 export async function DELETE(request: Request, { params }: { params: { id: string } }) {
   try {
     const session = await auth();

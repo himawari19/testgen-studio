@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { callLLM } from '../../ai/llm';
 
-// 9Router public input may be "https://host/v1 sk-key" — split URL and key.
+// 9Router public input may be "https://host/v1 sk-key" - split URL and key.
 function parse9RouterPublicInput(input: string) {
   const raw = input.trim();
   const urlMatch = raw.match(/https?:\/\/\S+/);
@@ -49,7 +49,7 @@ export async function POST(request: Request) {
         throw new Error('No models/combos are currently configured or running on your local 9Router.');
       }
     } else if (!testModel && p === '9router-public') {
-      // apiKey IS the tunnel URL — normalize: strip trailing /v1 so we control the path
+      // apiKey IS the tunnel URL - normalize: strip trailing /v1 so we control the path
       const tunnelUrl = (publicInput?.url || '').replace(/\/v1\/?$/, '').replace(/\/$/, '');
       if (!tunnelUrl) throw new Error('Enter 9Router public URL and API key in the same field.');
       try {

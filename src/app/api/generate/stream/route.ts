@@ -100,7 +100,7 @@ export async function POST(request: Request) {
           const publicBaseUrl = p === '9router-public'
             ? String(nine_router_public_url || '').replace(/\/v1\/?$/, '').replace(/\/$/, '')
             : '';
-          // ponytail: keys are client-side only — sent per request, never stored server-side
+          // ponytail: keys are client-side only - sent per request, never stored server-side
           const apiKey = p === '9router' ? '9router-local-key'
             : p === '9router-public' ? (nine_router_public_key || '')
             : (api_key || '');
@@ -123,7 +123,7 @@ export async function POST(request: Request) {
             sendEvent('crawling', 'Crawling page and extracting elements...');
             pageData = await crawlPage(url, auth);
             if (!pageData.elements || pageData.elements.length === 0) {
-              sendEvent('error', 'No interactive elements found. This page may render its content with JavaScript (SPA), which static crawling cannot read — try a server-rendered page or the page that holds the actual form.');
+              sendEvent('error', 'No interactive elements found. This page may render its content with JavaScript (SPA), which static crawling cannot read - try a server-rendered page or the page that holds the actual form.');
               controller.close();
               return;
             }

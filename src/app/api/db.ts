@@ -1,6 +1,6 @@
 import { neon, NeonQueryFunction } from '@neondatabase/serverless';
 
-// Neon SQL client — DATABASE_URL must be set in Vercel environment variables
+// Neon SQL client - DATABASE_URL must be set in Vercel environment variables
 // Format: postgresql://user:password@host/dbname?sslmode=require
 
 let sql: NeonQueryFunction<false, false> | null = null;

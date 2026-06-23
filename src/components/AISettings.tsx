@@ -230,7 +230,7 @@ export default function AISettings({
           selectedModel: nextModel,
         }));
       } else {
-        // ponytail: store key in browser only — never sent to our server for storage
+        // ponytail: store key in browser only - never sent to our server for storage
         setApiKey(provider, input);
       }
       if (validatedModels.length > 0) {
@@ -761,7 +761,7 @@ export default function AISettings({
                     className="input-field text-sm py-2"
                     aria-label={`Select model for ${info.label}`}
                   >
-                    <option value="">— Select model —</option>
+                    <option value="">- Select model -</option>
                     {(localProviderModels[provider] || modelsData?.providers[provider] || []).map((model) => (
                       <option key={model} value={model}>
                         {model}

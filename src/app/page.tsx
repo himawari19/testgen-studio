@@ -53,7 +53,7 @@ const FEATURES = [
 ];
 
 const STEPS = [
-  { n: "01", title: "Paste a URL", desc: "Point TestGen at any page you want to test — login forms, dashboards, checkout flows." },
+  { n: "01", title: "Paste a URL", desc: "Point TestGen at any page you want to test - login forms, dashboards, checkout flows." },
   { n: "02", title: "Bring your AI key", desc: "Pick OpenAI, Claude, Gemini, Groq, DeepSeek and more. Your key stays in your browser." },
   { n: "03", title: "Generate & export", desc: "Get test cases and runnable scripts in seconds. Copy, download, or run them." },
 ];
@@ -110,10 +110,11 @@ const PROVIDERS = [
   { name: "OpenAI", icon: "/logos/openai.svg" },
   { name: "Claude", icon: "/logos/claude.svg" },
   { name: "Gemini", icon: "/logos/gemini.svg" },
-  { name: "Groq", icon: "/logos/groq.png" },
+  { name: "Groq", icon: "/logos/groq.png", iconBg: "bg-[#f43d00]" },
   { name: "DeepSeek", icon: "/logos/deepseek.svg" },
-  { name: "Moonshot", icon: "/logos/moonshot.png" },
+  { name: "Moonshot", icon: "/logos/moonshot.svg" },
   { name: "Qwen", icon: "/logos/qwen.svg" },
+  { name: "9Router", icon: "/logos/9router.svg", iconBg: "bg-[#f97316]" },
 ];
 
 const FAQ = [
@@ -127,7 +128,7 @@ const FAQ = [
   },
   {
     q: "Which frameworks and languages are supported?",
-    a: "Playwright, Cypress and Selenium across TypeScript, JavaScript, Python and Java — pick the combo you actually use.",
+    a: "Playwright, Cypress and Selenium across TypeScript, JavaScript, Python and Java - pick the combo you actually use.",
   },
   {
     q: "Does it work on JavaScript-heavy sites?",
@@ -170,7 +171,7 @@ export default function Landing() {
           </h1>
           <p className="mt-5 text-lg text-slate-500 max-w-2xl mx-auto">
             Paste a URL, choose your AI provider, and get structured test cases plus
-            runnable Playwright, Cypress or Selenium scripts — in seconds.
+            runnable Playwright, Cypress or Selenium scripts - in seconds.
           </p>
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3"><Link
                   href="/app"
@@ -257,7 +258,7 @@ export default function Landing() {
             <div className="flex flex-wrap items-center justify-center gap-2.5">
               {PROVIDERS.map((p) => (
                 <span key={p.name} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-slate-200 bg-white text-sm text-slate-600">
-                  <span className="w-5 h-5 rounded-full flex items-center justify-center bg-slate-50">
+                  <span className={`w-5 h-5 rounded-full flex items-center justify-center ${p.iconBg || "bg-slate-50"}`}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={p.icon} alt="" className="w-3.5 h-3.5 object-contain" loading="lazy" />
                   </span>
@@ -279,7 +280,7 @@ export default function Landing() {
           {FEATURES.map((f) => (
             <div
               key={f.title}
-              className="p-6 rounded-2xl border border-slate-100 hover:border-indigo-200 hover:shadow-md transition bg-white"
+              className="p-6 rounded-2xl border border-slate-200 shadow-sm hover:border-indigo-300 hover:shadow-lg transition bg-white"
             >
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-11 h-11 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">

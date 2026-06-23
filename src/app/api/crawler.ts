@@ -1,5 +1,5 @@
-import * as cheerio from 'cheerio';
 import axios, { AxiosRequestConfig } from 'axios';
+import { attr, closest, hasAttr, HtmlElement, HtmlRoot, parseHTML, selectAll, selectOne, tagName, text } from './html';
 
 export interface DOMElement {
   tag: string;
@@ -31,13 +31,12 @@ export interface AuthConfig {
 
 const SOCIAL_RE = /facebook\.com|twitter\.com|x\.com|linkedin\.com|instagram\.com|youtube\.com|pinterest\.com|github\.com|tiktok\.com/i;
 
-function buildCssSelector(tag: string, el: any, $: cheerio.CheerioAPI): string {
-  const $el = $(el);
-  const id = $el.attr('id');
-  const name = $el.attr('name');
-  const testid = $el.attr('data-testid');
-  const placeholder = $el.attr('placeholder');
-  const type = $el.attr('type');
+function buildCssSelector(tag: string, el: HtmlElement): string {
+  const id = attr(el, 'id');
+  const name = attr(el, 'name');
+  const testid = attr(el, 'data-testid');
+  const placeholder = attr(el, 'placeholder');
+  const type = attr(el, 'type');
   if (id) return `#${id}`;
   if (name) return `${tag}[name='${name}']`;
   if (testid) return `[data-testid='${testid}']`;
@@ -46,53 +45,51 @@ function buildCssSelector(tag: string, el: any, $: cheerio.CheerioAPI): string {
   return tag;
 }
 
-function extractElements($: cheerio.CheerioAPI): DOMElement[] {
+function extractElements(root: HtmlRoot): DOMElement[] {
   const results: DOMElement[] = [];
   const seenKeys = new Set<string>();
 
-  $('input, button, select, textarea, a[href], [role="button"], [type="submit"]').each((_i, el) => {
-    const $el = $(el);
-
+  for (const el of selectAll(root, 'input, button, select, textarea, a[href], [role="button"], [type="submit"]')) {
     // ponytail: skip explicitly hidden elements (can't compute styles without a browser)
-    const style = $el.attr('style') || '';
-    if (/display\s*:\s*none|visibility\s*:\s*hidden/.test(style)) return;
-    if ($el.attr('hidden') !== undefined) return;
+    const style = attr(el, 'style') || '';
+    if (/display\s*:\s*none|visibility\s*:\s*hidden/.test(style)) continue;
+    if (hasAttr(el, 'hidden')) continue;
 
-    const tag = (el as any).tagName?.toLowerCase() || '';
+    const tag = tagName(el);
 
     // skip social links
     if (tag === 'a') {
-      const href = $el.attr('href') || '';
-      if (SOCIAL_RE.test(href)) return;
+      const href = attr(el, 'href') || '';
+      if (SOCIAL_RE.test(href)) continue;
     }
 
     // label lookup
     let labelText = '';
-    const id = $el.attr('id') || null;
+    const id = attr(el, 'id') || null;
     if (id) {
-      const labelEl = $(`label[for='${id}']`);
-      if (labelEl.length) labelText = labelEl.text().trim();
+      const labelEl = selectAll(root, 'label').find((label) => attr(label, 'for') === id);
+      if (labelEl) labelText = text(labelEl);
     }
     if (!labelText) {
-      const parentLabel = $el.closest('label');
-      if (parentLabel.length) labelText = parentLabel.text().trim();
+      const parentLabel = closest(el, 'label');
+      if (parentLabel) labelText = text(parentLabel);
     }
 
-    const textContent = ($el.text() || '').trim().substring(0, 40);
-    const name = $el.attr('name') || null;
-    const type = $el.attr('type') || null;
-    const placeholder = $el.attr('placeholder') || null;
-    const aria_label = $el.attr('aria-label') || null;
-    const testid = $el.attr('data-testid') || null;
+    const textContent = text(el).substring(0, 40);
+    const name = attr(el, 'name') || null;
+    const type = attr(el, 'type') || null;
+    const placeholder = attr(el, 'placeholder') || null;
+    const aria_label = attr(el, 'aria-label') || null;
+    const testid = attr(el, 'data-testid') || null;
     const isInput = tag === 'input' || tag === 'textarea' || tag === 'select';
 
     // filter anonymous/unidentifiable elements
-    if (!id && !name && !testid && !placeholder && !aria_label && !labelText && !textContent && !isInput) return;
+    if (!id && !name && !testid && !placeholder && !aria_label && !labelText && !textContent && !isInput) continue;
 
-    const cssSelector = buildCssSelector(tag, el, $);
+    const cssSelector = buildCssSelector(tag, el);
 
     const dupKey = `${cssSelector}::${textContent}`;
-    if (seenKeys.has(dupKey)) return;
+    if (seenKeys.has(dupKey)) continue;
     seenKeys.add(dupKey);
 
     results.push({
@@ -106,13 +103,59 @@ function extractElements($: cheerio.CheerioAPI): DOMElement[] {
       text_content: textContent || null,
       css_selector: cssSelector,
     });
-  });
+  }
 
   return results;
 }
 
+// Map Playwright service response element to DOMElement
+function normalizePlElement(el: any): DOMElement {
+  const tag = el.tag || 'a';
+  const id = el.id || null;
+  const name = el.name || null;
+  const type = el.type || null;
+  const placeholder = el.placeholder || null;
+  const aria_label = el['aria-label'] || null;
+
+  let css_selector = tag;
+  if (id) css_selector = `#${id}`;
+  else if (name) css_selector = `${tag}[name='${name}']`;
+  else if (placeholder) css_selector = `${tag}[placeholder='${placeholder}']`;
+  else if (type && tag === 'input') css_selector = `input[type='${type}']`;
+
+  return {
+    tag,
+    id,
+    name,
+    type,
+    placeholder,
+    aria_label,
+    label_text: null,
+    text_content: (el.text || '').substring(0, 40) || null,
+    css_selector,
+  };
+}
+
+async function crawlPageWithService(targetURL: string, auth: AuthConfig | undefined, serviceUrl: string): Promise<PageData> {
+  const secret = process.env.CRAWLER_SECRET || '';
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (secret) headers['x-crawler-secret'] = secret;
+
+  const res = await axios.post(`${serviceUrl}/crawl`, { url: targetURL, auth }, { headers, timeout: 60000 });
+  const data = res.data;
+
+  const elements: DOMElement[] = (data.elements || []).map(normalizePlElement);
+  return { title: data.title || 'Untitled Page', url: targetURL, elements };
+}
+
 export async function crawlPage(targetURL: string, auth?: AuthConfig): Promise<PageData> {
-  console.log('Crawling URL:', targetURL);
+  const serviceUrl = process.env.CRAWLER_URL?.replace(/\/$/, '');
+  if (serviceUrl) {
+    console.log('Crawling via Playwright service:', targetURL);
+    return crawlPageWithService(targetURL, auth, serviceUrl);
+  }
+
+  console.log('Crawling URL (cheerio):', targetURL);
 
   const headers: Record<string, string> = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
@@ -156,9 +199,9 @@ export async function crawlPage(targetURL: string, auth?: AuthConfig): Promise<P
   const res = await axios.get(targetURL, config);
   const html = typeof res.data === 'string' ? res.data : String(res.data);
 
-  const $ = cheerio.load(html);
-  const title = $('title').text().trim() || 'Untitled Page';
-  const elements = extractElements($);
+  const root = parseHTML(html);
+  const title = text(selectOne(root, 'title') || []) || 'Untitled Page';
+  const elements = extractElements(root);
 
   return { title, url: targetURL, elements };
 }

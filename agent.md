@@ -1,58 +1,35 @@
-# URLtoScript
+# TestGen Studio - Agent Notes
 
-Web app: input URL + deskripsi test → crawl halaman → AI generate test case table + Playwright script.
+Next.js 14 app for URL crawling, AI test-case generation, scripts, history, selector playground, and monitor.
 
-## Stack
-* **Architecture:** Single-stack Node.js/Next.js 14 application running entirely on port `3000`.
-* **Database:** SQLite (`data/urltoscript.db`).
-* **API Keys Store:** Stored in `.runtime_keys.json`.
+## Current Stack
+- App: single Next.js app in `src/`, runs on port `3000`.
+- DB: Neon PostgreSQL only, via `src/app/api/db.ts` and `DATABASE_URL`.
+- No SQLite runtime. `data/` is old local DB residue.
+- Keys/config: user input and browser `localStorage`; do not hardcode provider URLs/keys.
+- 9Router: local `http://localhost:20128/v1`, public URL saved in browser as `9router_public`.
 
-## Project Structure (`src/`)
-* **`app/page.tsx`:** Main page orchestrator, manages global selection state and syncs with `localStorage`.
-* **`app/api/`:** All backend API endpoints:
-  * `health/`: Health check.
-  * `models/`: Lists models and checks provider connection status (including local 9Router ping).
-  * `keys/`: Saves, validates, and revokes API keys.
-  * `generate/stream/`: Coordinates crawler and prompt analyzer, streaming BDD test cases and script output using SSE.
-  * `history/`: Loads and updates SQLite generation history.
-  * `playground/`: Loads target pages and evaluates selectors locally.
-* **`components/`:**
-  * `AISettings.tsx`: Pop-up panel and settings page for keys management and provider/model configuration.
-  * `InputForm.tsx`: Target URL and Test Context input form.
-  * `ResultsDisplay.tsx` & `ScriptViewer.tsx`: Displays generated test cases and source code scripts.
+## Files To Check First
+- Landing: `src/app/page.tsx`
+- App shell: `src/app/app/page.tsx`
+- AI settings: `src/components/AISettings.tsx`
+- Generate form: `src/components/InputForm.tsx`
+- DB/schema: `src/app/api/db.ts`, `schema.sql`
+- Models/status: `src/app/api/models/route.ts`
+- Key validation: `src/app/api/keys/validate/route.ts`
+- Generation: `src/app/api/generate/stream/route.ts`
+- History: `src/app/api/history/route.ts`
+- Neon keepalive: `.github/workflows/neon-ping.yml`
 
-## Rules & Restrictions (MANDATORY)
+## Rules
+- Do not push unless user explicitly says push.
+- Avoid `npm run build` during local dev; it can conflict with `.next` dev cache.
+- Use `npm.cmd` on Windows if PowerShell blocks `npm.ps1`.
+- Fast check: `npx.cmd tsc --noEmit --incremental false`.
+- Do not launch browser automation unless user asks.
+- Do not auto-select provider/model when empty; user choice lives in `urltoscript_selected_provider_model`.
+- Neon ping is via GitHub Actions only, not Vercel Cron.
 
-> [!WARNING]
-> **No Active Dev Builds:**
-> * **DO NOT** run `npm run build` during active local development.
-> * Running a build conflicts with `next dev` asset caching inside the `.next/` directory, resulting in `404` errors for runtime JavaScript and CSS hot-reload chunks.
-> * Run `npm run build` **ONLY** when preparing major releases or final patches.
-> * **To Fix 404 Cache Errors:** Run `Remove-Item -Recurse -Force .next` inside the root directory to clear cache, then run `npm run dev` fresh.
-
-> [!IMPORTANT]
-> **No Auto-Selection:**
-> * The system must **never** auto-select a default provider or model on load. The selection is stored in `localStorage` under `urltoscript_selected_provider_model`.
-> * If `localStorage` is empty, keep the selection states empty (`""`) and prompt the user to configure settings.
-
-> [!WARNING]
-> **No Automated Browser Testing / Verification:**
-> * **DO NOT** launch the browser or run automated browser subagents to test UI or generation flows.
-> * The user will test and verify the app manually; keep the task focused on backend/frontend code implementation without running automated browser agents.
-
-> [!NOTE]
-> **9Router & Provider Ping Behavior:**
-> * Supports **9Router** local AI proxy (`http://localhost:20128/v1`) without API key requirements.
-> * Pings are model-specific: checking connection for *any* provider (including 9Router) sends a real validation request using the user's currently selected model (or the first available model) to verify real routing and trigger CLI logs, completely avoiding hardcoded model fallbacks.
-> * Toast notifications show the total token count consumed during verification.
-
-> [!NOTE]
-> **Playground Behavior:**
-> * The Selector Playground is entirely deterministic and **does NOT use AI**. 
-> * It executes local Playwright evaluations and `Array.from(document.querySelectorAll(...))` to fetch element match counts.
-
-## How to Run
-```powershell
-# Jalankan di root folder (port 3000)
-npm run dev
-```
+## Cleanup Notes
+- `README.md` still has old backend/SQLite docs.
+- `sqlite` dependency is legacy unless a current grep proves otherwise.

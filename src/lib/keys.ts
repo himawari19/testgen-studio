@@ -1,4 +1,4 @@
-// Client-side API key storage. Keys live in the browser only — never sent to
+// Client-side API key storage. Keys live in the browser only - never sent to
 // our server for storage, only forwarded per-request to the AI provider.
 const STORE = "testgen_api_keys";
 

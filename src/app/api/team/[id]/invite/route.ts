@@ -17,7 +17,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     if (!membership.length) return NextResponse.json({ detail: 'Not found' }, { status: 404 });
 
     const now = new Date().toISOString();
-    // upsert — if already a member, no-op
+    // upsert - if already a member, no-op
     await sql`
       INSERT INTO team_members (team_id, user_id, role, created_at)
       VALUES (${params.id}, ${email.trim().toLowerCase()}, 'member', ${now})

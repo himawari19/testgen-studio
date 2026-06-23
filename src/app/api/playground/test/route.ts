@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import * as cheerio from 'cheerio';
 import axios from 'axios';
+import { attr, parseHTML, selectAll, tagName, text } from '../../html';
 
 export async function POST(request: Request) {
   try {
@@ -15,19 +15,19 @@ export async function POST(request: Request) {
       maxRedirects: 5,
     });
     const html = typeof res.data === 'string' ? res.data : String(res.data);
-    const $ = cheerio.load(html);
+    const root = parseHTML(html);
 
-    const matched = $(selector);
+    const matched = selectAll(root, selector);
     const results: any[] = [];
     const limit = Math.min(matched.length, 20);
 
-    matched.slice(0, limit).each((_i, el) => {
-      const $el = $(el);
-      const tag = (el as any).tagName?.toLowerCase() || '';
-      const text = $el.text().trim().substring(0, 100);
-      const id = $el.attr('id') || null;
-      results.push({ tag, text, id });
-    });
+    for (const el of matched.slice(0, limit)) {
+      results.push({
+        tag: tagName(el),
+        text: text(el).substring(0, 100),
+        id: attr(el, 'id') || null,
+      });
+    }
 
     return NextResponse.json({
       selector,

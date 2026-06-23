@@ -11,8 +11,11 @@
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
     "axios": "^1.7.7",
-    "cheerio": "^1.2.0",
+    "css-select": "^5.2.2",
+    "domhandler": "^5.0.3",
+    "domutils": "^3.2.2",
     "file-saver": "^2.0.5",
+    "htmlparser2": "^10.1.0",
     "jszip": "^3.10.1",
     "lucide-react": "^1.16.0",
     "next": "^14.2.15",

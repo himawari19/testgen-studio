@@ -468,7 +468,7 @@ export default function InputForm({
         </div>
       </div>
 
-      {/* Framework & Language — only when scripts are involved */}
+      {/* Framework & Language - only when scripts are involved */}
       {outputMode !== 'cases' && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 p-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800">
           <div>
