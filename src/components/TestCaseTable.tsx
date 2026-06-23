@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { ChevronDown, Play, Loader2, CheckCircle2, XCircle, Download, Pencil, Check, X as XIcon } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
+import { ChevronDown, Loader2, CheckCircle2, XCircle, Download, Pencil, Check, X as XIcon, Play } from "lucide-react";
 import { TestCase, ScriptFile } from "@/types";
-import { useIsLocal } from "@/lib/useIsLocal";
+import toast from "react-hot-toast";
 
 function parseMdRow(rowStr: string): string[] {
   const parts = rowStr.split("|");
@@ -55,7 +55,6 @@ interface TestCaseTableProps {
   markdown: string;
   testCases?: TestCase[];
   scripts?: ScriptFile[];
-  url?: string;
 }
 
 type RunState = { status: "pending" | "running" | "passed" | "failed" | "blocked"; actual?: string };
@@ -157,53 +156,52 @@ function Stat({ label, val, color }: { label: string; val: number; color: string
   );
 }
 
-export default function TestCaseTable({ markdown, testCases, scripts, url }: TestCaseTableProps) {
+export default function TestCaseTable({ markdown, testCases, scripts }: TestCaseTableProps) {
   const [typeFilter, setTypeFilter]         = useState<typeof TYPE_OPTS[number]>("ALL");
   const [statusFilter, setStatusFilter]     = useState<typeof STATUS_OPTS[number]>("ALL");
   const [priorityFilter, setPriorityFilter] = useState<typeof PRIORITY_OPTS[number]>("ALL");
   const [runStatus, setRunStatus]           = useState<Record<number, RunState>>({});
-  const [isRunning, setIsRunning]           = useState(false);
   const [showExport, setShowExport]         = useState(false);
   const [editIdx, setEditIdx]               = useState<number | null>(null);
   const [editDraft, setEditDraft]           = useState<Partial<TestCase>>({});
-  const isLocal = useIsLocal();
 
   const baseCases = useMemo(
     () => (testCases && testCases.length > 0) ? testCases : parseMarkdownToTestCases(markdown),
     [testCases, markdown]
   );
-  const [cases, setCases] = useState<TestCase[]>([]);
-  // sync when baseCases changes (new generation)
-  useMemo(() => setCases(baseCases), [baseCases]);
+  const [cases, setCases] = useState<TestCase[]>(baseCases);
+  useEffect(() => setCases(baseCases), [baseCases]);
 
-  const runTest = async (tc: TestCase, index: number) => {
-    const script = scripts?.[index];
-    if (!script?.content) return;
-    setRunStatus(prev => ({ ...prev, [tc.number]: { status: "running" } }));
+  const runScript = async (tc: TestCase, index: number) => {
+    const script = scripts?.find(s => s.file_name === tc.file_name);
+    if (!script) return;
+    setRunStatus(prev => ({ ...prev, [tc.number]: { status: 'running' } }));
     try {
-      const res = await fetch("/api/runner/execute", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ script_content: script.content, url: url || "" }),
+      const res = await fetch('/api/run-test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ script_content: script.content, file_name: script.file_name }),
       });
       const data = await res.json();
+      if (!res.ok || data.error) {
+        setRunStatus(prev => ({ ...prev, [tc.number]: { status: 'failed', actual: data.error || 'Execution error' } }));
+        toast.error(data.error || 'Test execution failed');
+        return;
+      }
+      const passed = (data.passed || 0) > 0 && (data.failed || 0) === 0;
       setRunStatus(prev => ({
         ...prev,
         [tc.number]: {
-          status: data.passed ? "passed" : "failed",
-          actual: data.error || (data.passed ? "All assertions passed" : "Test failed"),
+          status: passed ? 'passed' : 'failed',
+          actual: passed ? `Passed in ${data.duration}s` : (data.error || `${data.failed} test(s) failed`),
         },
       }));
-    } catch {
-      setRunStatus(prev => ({ ...prev, [tc.number]: { status: "failed", actual: "Network error" } }));
+      if (passed) toast.success(`Passed in ${data.duration}s`);
+      else toast.error(data.error || `${data.failed} test(s) failed`);
+    } catch (err: any) {
+      setRunStatus(prev => ({ ...prev, [tc.number]: { status: 'failed', actual: err.message } }));
+      toast.error(err.message);
     }
-  };
-
-  const runAll = async () => {
-    if (!scripts?.length) return;
-    setIsRunning(true);
-    await Promise.all(cases.map((tc, i) => runTest(tc, i)));
-    setIsRunning(false);
   };
 
   if (cases.length === 0) {
@@ -286,17 +284,6 @@ export default function TestCaseTable({ markdown, testCases, scripts, url }: Tes
               </div>
             )}
           </div>
-          {isLocal && scripts && scripts.length > 0 && (
-            <button
-              type="button"
-              onClick={runAll}
-              disabled={isRunning}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-60 transition"
-            >
-              {isRunning ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
-              {isRunning ? "Running..." : "Run Tests"}
-            </button>
-          )}
         </div>
       </div>
 
@@ -339,8 +326,8 @@ export default function TestCaseTable({ markdown, testCases, scripts, url }: Tes
               {["#", "Test Case ID", "Test Case Name", "Type", "Pre Condition", "Test Steps", "Expected Result", "Actual Result", "Status", "Priority", "Evidence"].map(h => (
                 <th key={h} className="px-4 py-3 text-left font-semibold text-slate-600 uppercase tracking-wider whitespace-nowrap">{h}</th>
               ))}
+              {scripts && scripts.length > 0 && <th className="px-4 py-3 text-left font-semibold text-slate-600 uppercase tracking-wider">Run</th>}
               <th className="px-4 py-3" />
-              {isLocal && scripts?.length ? <th className="px-4 py-3" /> : null}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -407,6 +394,27 @@ export default function TestCaseTable({ markdown, testCases, scripts, url }: Tes
                     {rs?.status === "failed"  && <XCircle className="w-4 h-4 text-red-500" />}
                     {!rs && "-"}
                   </td>
+                  {/* Run button */}
+                  {scripts && scripts.length > 0 && (
+                    <td className="px-2 py-3">
+                      {(() => {
+                        const hasScript = !!scripts.find(s => s.file_name === tc.file_name);
+                        const rs = runStatus[tc.number];
+                        if (!hasScript) return <span className="text-slate-200">—</span>;
+                        if (rs?.status === 'running') return <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-500" />;
+                        return (
+                          <button
+                            type="button"
+                            title="Run this test script"
+                            onClick={() => runScript(tc, i)}
+                            className="p-1 rounded hover:bg-indigo-50 text-slate-300 hover:text-indigo-600 transition"
+                          >
+                            <Play className="w-3.5 h-3.5" />
+                          </button>
+                        );
+                      })()}
+                    </td>
+                  )}
                   {/* Edit button */}
                   <td className="px-2 py-3">
                     {isEditing ? (
@@ -418,28 +426,12 @@ export default function TestCaseTable({ markdown, testCases, scripts, url }: Tes
                       <button type="button" onClick={startEdit} className="p-1 rounded hover:bg-slate-100 text-slate-300 hover:text-slate-500 transition" title="Edit row"><Pencil className="w-3.5 h-3.5" /></button>
                     )}
                   </td>
-                  {isLocal && scripts?.length ? (
-                    <td className="px-2 py-3">
-                      <button
-                        type="button"
-                        onClick={() => runTest(tc, i)}
-                        disabled={rs?.status === "running"}
-                        className="p-1 rounded hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 transition disabled:opacity-40"
-                        title="Run this test"
-                      >
-                        {rs?.status === "running"
-                          ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          : <Play className="w-3.5 h-3.5" />
-                        }
-                      </button>
-                    </td>
-                  ) : null}
                 </tr>
               );
             })}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={12} className="px-4 py-8 text-center text-slate-400">
+                <td colSpan={13} className="px-4 py-8 text-center text-slate-400">
                   No test cases match the selected filters.
                 </td>
               </tr>

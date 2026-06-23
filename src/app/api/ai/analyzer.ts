@@ -32,17 +32,17 @@ export function extractCaseSlug(userContext: string): string {
   const text = userContext.toLowerCase();
 
   const mapped: [RegExp, string][] = [
-    [/masuk|login|signin|sign.?in/, 'login'],
-    [/daftar|register|signup|sign.?up/, 'register'],
-    [/keluar|logout|sign.?out/, 'logout'],
-    [/cari|pencarian|search/, 'search'],
-    [/checkout|bayar|payment/, 'checkout'],
-    [/profil|profile/, 'profile'],
-    [/pengaturan|settings/, 'settings'],
-    [/upload|unggah/, 'upload'],
-    [/filter|saring|kategori|category|sort/, 'filter'],
-    [/navigasi|navigation|menu|navbar/, 'navigation'],
-    [/form|formulir/, 'form'],
+    [/login|signin|sign.?in/, 'login'],
+    [/register|signup|sign.?up/, 'register'],
+    [/logout|sign.?out/, 'logout'],
+    [/search/, 'search'],
+    [/checkout|payment/, 'checkout'],
+    [/profile/, 'profile'],
+    [/settings/, 'settings'],
+    [/upload/, 'upload'],
+    [/filter|category|sort/, 'filter'],
+    [/navigation|menu|navbar/, 'navigation'],
+    [/form/, 'form'],
   ];
 
   for (const [re, slug] of mapped) {
@@ -102,10 +102,6 @@ export function filterElementRefsByContext(
   return refs;
 }
 
-// Backward-compatible helper. Prefer filterElementRefsByContext for AI prompts.
-export function filterElementsByContext(elements: DOMElement[], userContext: string): DOMElement[] {
-  return filterElementRefsByContext(elements, userContext).map(ref => ref.el);
-}
 
 export function formatElementRefs(refs: ElementRef[], includeSelector: boolean = true): string {
   return refs
@@ -235,16 +231,15 @@ export function getFrameworkRules(fw: string, lang: string): string {
   ].join('\n- ');
 }
 
-// Fast model mapping for script generation. Override by passing the same model if your provider does not support these names.
+const FAST_MODELS: Record<string, string> = {
+  openai: 'gpt-4o-mini',
+  anthropic: 'claude-haiku-4-5',
+  google: 'gemini-2.0-flash',
+  groq: 'llama-3.1-8b-instant',
+};
+
 export function getFastModel(provider: string, model: string): string {
-  const p = provider.toLowerCase().trim();
-
-  if (p === 'openai') return 'gpt-4o-mini';
-  if (p === 'anthropic') return 'claude-3-5-haiku-20241022';
-  if (p === 'google') return 'gemini-1.5-flash';
-  if (p === 'groq') return 'llama-3.1-8b-instant';
-
-  return model;
+  return FAST_MODELS[provider.toLowerCase().trim()] || model;
 }
 
 function getBatchFocus(batchNum: number): string {

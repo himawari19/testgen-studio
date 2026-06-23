@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import axios from "axios";
 import {
   History,
@@ -155,6 +155,22 @@ export default function HistoryPage({ onRerun }: HistoryPageProps) {
     });
   };
 
+  // Compare each item against the most recent older run for the same URL
+  const diffs = useMemo(() => {
+    const sorted = [...history].sort((a, b) => a.created_at.localeCompare(b.created_at));
+    const prev = new Map<string, HistoryItem>();
+    const result = new Map<string, { cases: number; scripts: number }>();
+    for (const item of sorted) {
+      const p = prev.get(item.url);
+      if (p) result.set(item.id, {
+        cases:   (item.test_cases_count ?? 0) - (p.test_cases_count ?? 0),
+        scripts: item.scripts_count - p.scripts_count,
+      });
+      prev.set(item.url, item);
+    }
+    return result;
+  }, [history]);
+
   const formatDate = (iso: string) => {
     const d = new Date(iso);
     return d.toLocaleDateString("en-US", {
@@ -282,6 +298,21 @@ export default function HistoryPage({ onRerun }: HistoryPageProps) {
                       {(item.test_cases_count ?? 0) > 0 && <span>{item.test_cases_count} cases</span>}
                       <span>{item.scripts_count} scripts</span>
                       <span className="text-slate-300">{item.ai_provider}/{item.ai_model}</span>
+                      {(() => {
+                        const d = diffs.get(item.id);
+                        if (!d) return null;
+                        const parts = [
+                          d.cases !== 0 && `${d.cases > 0 ? "+" : ""}${d.cases} cases`,
+                          d.scripts !== 0 && `${d.scripts > 0 ? "+" : ""}${d.scripts} scripts`,
+                        ].filter(Boolean);
+                        if (!parts.length) return null;
+                        const isPos = d.cases >= 0 && d.scripts >= 0;
+                        return (
+                          <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${isPos ? "text-emerald-600 bg-emerald-50 border-emerald-200" : "text-red-600 bg-red-50 border-red-200"}`}>
+                            {parts.join(", ")} vs prev
+                          </span>
+                        );
+                      })()}
                     </div>
                   </div>
                   <div className="flex items-center gap-1">

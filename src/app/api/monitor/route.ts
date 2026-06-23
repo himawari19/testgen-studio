@@ -35,7 +35,7 @@ export async function POST(request: Request) {
     await ensureSchema();
     const pageData = await crawlPage(url);
     if (!pageData.elements.length) {
-      return NextResponse.json({ detail: 'No selectors found. This page may be a JavaScript-rendered SPA, which static crawling cannot read.' }, { status: 400 });
+      return NextResponse.json({ detail: 'No interactive elements found. This site may block automated browsers or require login. Try a specific sub-page (e.g. /login, /checkout) instead of the homepage.' }, { status: 400 });
     }
     const selectors = pageData.elements.map(el => ({
       css_selector: el.css_selector,

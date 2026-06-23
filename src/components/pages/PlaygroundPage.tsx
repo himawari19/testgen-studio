@@ -151,13 +151,14 @@ export default function PlaygroundPage() {
           </button>
         </div>
         {pageLoaded && (
-          <div className="mt-3 p-3 bg-emerald-50 border border-emerald-100 rounded-lg">
-            <p className="text-sm text-emerald-700 font-medium flex items-center gap-2">
+          <div className={`mt-3 p-3 border rounded-lg ${elementsCount === 0 ? "bg-amber-50 border-amber-100" : "bg-emerald-50 border-emerald-100"}`}>
+            <p className={`text-sm font-medium flex items-center gap-2 ${elementsCount === 0 ? "text-amber-700" : "text-emerald-700"}`}>
               <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
               {pageTitle}
             </p>
-            <p className="text-xs text-emerald-600 mt-1 ml-6">
+            <p className={`text-xs mt-1 ml-6 ${elementsCount === 0 ? "text-amber-600" : "text-emerald-600"}`}>
               {elementsCount} interactive elements detected
+              {elementsCount === 0 && " - site may block bots or require login. Try a specific sub-page (e.g. /login, /checkout)."}
             </p>
           </div>
         )}

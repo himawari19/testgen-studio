@@ -35,21 +35,6 @@ export default function ResultsDisplay({ results, onGenerateAnother }: ResultsDi
     }
   };
 
-  // ponytail: Dynamically detect the framework type of generated scripts
-  const getFrameworkLabel = (): string => {
-    if (!results.scripts || results.scripts.length === 0) return "Playwright";
-    const first = results.scripts[0];
-    const path = (first.script_location || "").toLowerCase();
-    const name = (first.file_name || "").toLowerCase();
-    const content = (first.content || "").toLowerCase();
-
-    if (name.includes(".cy.") || path.includes("cypress")) return "Cypress";
-    if (path.includes("selenium") || name.endsWith(".java") || name.endsWith(".cs") || content.includes("webdriver")) return "Selenium";
-    return "Playwright";
-  };
-
-  const fwLabel = getFrameworkLabel();
-
   return (
     <div className="mt-8">
       {/* Success Banner */}
@@ -108,7 +93,7 @@ export default function ResultsDisplay({ results, onGenerateAnother }: ResultsDi
             }`}
           >
             <FileCode2 className="w-4 h-4" />
-            {fwLabel} Scripts
+            Scripts
             <span className="text-xs bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">
               {results.scripts.length}
             </span>
@@ -122,7 +107,6 @@ export default function ResultsDisplay({ results, onGenerateAnother }: ResultsDi
           markdown={results.test_case_table}
           testCases={results.test_cases}
           scripts={results.scripts}
-          url={results.url}
         />
       )}
       {activeTab === "scripts" && (

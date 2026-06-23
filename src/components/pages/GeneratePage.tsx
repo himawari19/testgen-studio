@@ -30,33 +30,6 @@ export default function GeneratePage({
   const [status, setStatus] = useState("");
   const [step, setStep] = useState("");
   const [error, setError] = useState("");
-  const [funStatus, setFunStatus] = useState("Initializing generator...");
-
-  // ponytail: cycle loading tips to keep the user engaged during the AI generation process
-  useEffect(() => {
-    if (!isLoading) return;
-    
-    const messages = [
-      "Gathering DOM elements and structural tags...",
-      "Resolving optimal selector hierarchies...",
-      "Analyzing interactive elements and input requirements...",
-      "Prompting the AI model for test strategy...",
-      "Generating test case scenarios and edge cases...",
-      "Drafting robust assertions...",
-      "Formatting clean code scripts...",
-      "Saving automation scripts directly to tests/ directory...",
-      "Finalizing and organizing test files..."
-    ];
-    
-    setFunStatus(messages[0]);
-    let idx = 0;
-    const interval = setInterval(() => {
-      idx = (idx + 1) % messages.length;
-      setFunStatus(messages[idx]);
-    }, 2500);
-    return () => clearInterval(interval);
-  }, [isLoading]);
-
   // Consume prefill and clear results when re-running from history
   useEffect(() => {
     if (prefillUrl || prefillContext) {
@@ -120,24 +93,10 @@ export default function GeneratePage({
     }
   };
 
-  const isStepActive = (stepName: string, currentStep: string): boolean => {
-    if (stepName === "crawling") return currentStep === "crawling";
-    if (stepName === "analyzing") return currentStep === "analyzing";
-    if (stepName === "formatting") return currentStep === "formatting";
-    return false;
-  };
-
-  const isStepDone = (stepName: string, currentStep: string): boolean => {
-    const order = ["crawling", "crawled", "analyzing", "analyzed", "formatting", "complete"];
-    const targetIdx = order.indexOf(stepName);
-    const currentIdx = order.indexOf(currentStep);
-    if (targetIdx === -1 || currentIdx === -1) return false;
-    
-    if (stepName === "crawling") return currentIdx >= 1; // >= crawled
-    if (stepName === "analyzing") return currentIdx >= 3; // >= analyzed
-    if (stepName === "formatting") return currentIdx >= 5; // >= complete
-    return false;
-  };
+  const STEP_ORDER = ["crawling","crawled","analyzing","analyzed","formatting","complete"];
+  const STEP_DONE_AT: Record<string, number> = { crawling: 1, analyzing: 3, formatting: 5 };
+  const isStepActive = (s: string, cur: string) => s === cur;
+  const isStepDone = (s: string, cur: string) => (STEP_ORDER.indexOf(cur) ?? -1) >= (STEP_DONE_AT[s] ?? 99);
 
   const renderTimelineStep = (label: string, isActive: boolean, isDone: boolean) => {
     let bulletColor = "bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500";
@@ -260,11 +219,6 @@ export default function GeneratePage({
               {/* Pulsing Status Text */}
               <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 mb-1 max-w-[280px] truncate">
                 {status}
-              </p>
-
-              {/* Dynamic fun sub-status rotating text */}
-              <p className="text-[11px] font-medium text-slate-400 dark:text-slate-500 animate-pulse italic mt-1 max-w-[260px] truncate">
-                {funStatus}
               </p>
             </div>
           </div>

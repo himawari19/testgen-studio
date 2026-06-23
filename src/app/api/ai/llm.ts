@@ -1,3 +1,113 @@
+export function supportsVision(provider: string, model: string): boolean {
+  const m = model.toLowerCase();
+  const p = provider.toLowerCase();
+  // OpenAI: GPT-4o, GPT-4-turbo, GPT-4.1, o1/o3/o4 series
+  if (p === 'openai') return /gpt-4o|gpt-4-turbo|gpt-4-vision|gpt-4\.1|o[134]/.test(m);
+  // Anthropic: all current models (Opus 4.x, Sonnet 4.x, Haiku 4.x, Fable 5)
+  if (p === 'anthropic') return true;
+  // Google: all Gemini models
+  if (p === 'google') return true;
+  // Groq: Llama 4 and Llama 3.2 Vision
+  if (p === 'groq') return /llama-4|llama4|llama-3\.2|vision/.test(m);
+  // DeepSeek: V4 and VL (vision-language) variants
+  if (p === 'deepseek') return /v4|vl/.test(m);
+  // Alibaba Qwen: Qwen 3.x Plus and VL variants
+  if (p === 'alibaba') return /qwen/.test(m) && /plus|vl|3\./.test(m);
+  // 9Router: proxy - check model prefix to determine underlying model
+  if (p === '9router' || p === '9router-public') {
+    const m2 = model.toLowerCase();
+    if (m2.startsWith('cc/')) return true;                          // cc/ = Claude (all support vision)
+    if (m2.startsWith('cx/')) return /gpt-4o|gpt-4-turbo|gpt-4\.1|gpt-5|o[134]/.test(m2); // cx/ = OpenAI
+    if (m2.startsWith('qd/')) return false;                         // qd/ = unknown, skip
+    return false;
+  }
+  // Moonshot: vision not exposed via API input
+  return false;
+}
+
+export async function callVisionLLM(
+  provider: string,
+  model: string,
+  apiKey: string,
+  systemPrompt: string,
+  textPrompt: string,
+  imageBase64: string,
+  maxTokens: number = 4096,
+  usageOut?: { totalTokens?: number },
+  publicBaseUrl?: string
+): Promise<string> {
+  const p = provider.toLowerCase().trim();
+  const effectiveKey = (p === '9router' && !apiKey) ? '9router-local-key' : apiKey;
+
+  // Anthropic
+  if (p === 'anthropic') {
+    const payload = {
+      model,
+      max_tokens: maxTokens,
+      system: systemPrompt,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'image', source: { type: 'base64', media_type: 'image/png', data: imageBase64 } },
+          { type: 'text', text: textPrompt },
+        ],
+      }],
+      temperature: 0.3,
+    };
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': effectiveKey, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify(payload),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(`Anthropic vision error: ${JSON.stringify(data)}`);
+    if (usageOut && data.usage) usageOut.totalTokens = (data.usage.input_tokens || 0) + (data.usage.output_tokens || 0);
+    return data.content?.[0]?.text?.trim() || '';
+  }
+
+  // Google Gemini
+  if (p === 'google') {
+    const resolvedModel = model || 'gemini-1.5-flash';
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${resolvedModel}:generateContent?key=${effectiveKey}`;
+    const payload = {
+      contents: [{ parts: [
+        { inlineData: { mimeType: 'image/png', data: imageBase64 } },
+        { text: `${systemPrompt}\n\n${textPrompt}` },
+      ]}],
+      generationConfig: { temperature: 0.3, maxOutputTokens: maxTokens },
+    };
+    const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    const data = await response.json();
+    if (!response.ok) throw new Error(`Gemini vision error: ${JSON.stringify(data)}`);
+    if (usageOut && data.usageMetadata) usageOut.totalTokens = data.usageMetadata.totalTokenCount;
+    return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+  }
+
+  // OpenAI compatible (openai, 9router, 9router-public)
+  let baseURL = 'https://api.openai.com/v1/chat/completions';
+  if (p === '9router') baseURL = 'http://127.0.0.1:20128/v1/chat/completions';
+  if (p === '9router-public') baseURL = `${(publicBaseUrl || '').replace(/\/v1\/?$/, '').replace(/\/$/, '')}/v1/chat/completions`;
+
+  const payload: any = {
+    model,
+    max_tokens: maxTokens,
+    temperature: 0.3,
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: [
+        { type: 'image_url', image_url: { url: `data:image/png;base64,${imageBase64}`, detail: 'high' } },
+        { type: 'text', text: textPrompt },
+      ]},
+    ],
+  };
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (effectiveKey) headers.Authorization = `Bearer ${effectiveKey}`;
+  const response = await fetch(baseURL, { method: 'POST', headers, body: JSON.stringify(payload) });
+  const data = await response.json();
+  if (!response.ok) throw new Error(`${provider} vision error: ${JSON.stringify(data)}`);
+  if (usageOut && data.usage) usageOut.totalTokens = data.usage.total_tokens;
+  return data.choices?.[0]?.message?.content?.trim() || '';
+}
 
 export async function callLLM(
   provider: string,

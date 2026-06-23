@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useSession, signIn } from "next-auth/react";
 import { GenerateResponse } from "@/types";
 import { getApiKey } from "@/lib/keys";
-import { Send, Globe, MessageSquare, Loader2, Lock, ChevronDown, Code2, Zap, Plus, X } from "lucide-react";
+import { Send, Globe, MessageSquare, Loader2, Lock, ChevronDown, Code2, Zap, X } from "lucide-react";
 
 const API_URL = "";
 const GUEST_LIMIT = 5;
@@ -75,7 +75,6 @@ export default function InputForm({
   onPrefillConsumed,
 }: InputFormProps) {
   const [url, setUrl] = useState("");
-  const [extraUrls, setExtraUrls] = useState<string[]>([]);
   const [userContext, setUserContext] = useState("");
   const [urlError, setUrlError] = useState("");
   const [contextError, setContextError] = useState("");
@@ -99,7 +98,22 @@ export default function InputForm({
   const [language, setLanguage] = useState("typescript");
   const [fastMode, setFastMode] = useState(false);
   const [generationMode, setGenerationMode] = useState<'quick' | 'standard' | 'thorough'>('quick');
-  const [outputMode, setOutputMode] = useState<'both' | 'cases' | 'scripts'>('both');
+  const [outputMode, setOutputMode] = useState<'both' | 'cases' | 'scripts'>('cases');
+  const [crawlMode, setCrawlMode] = useState<'static' | 'playwright' | 'vision'>('static');
+
+  const VISION_CAPABLE: Record<string, (m: string) => boolean> = {
+    openai:           m => /gpt-4o|gpt-4-turbo|gpt-4-vision|gpt-4\.1|gpt-5|o[134]/.test(m),
+    anthropic:        () => true,
+    google:           () => true,
+    groq:             m => /llama-4|llama4|llama-3\.2|vision/.test(m),
+    deepseek:         m => /v4|vl/.test(m),
+    alibaba:          m => /qwen/.test(m) && /plus|vl|3\./.test(m),
+    '9router':        m => m.startsWith('cc/') || (m.startsWith('cx/') && /gpt-4o|gpt-4-turbo|gpt-4\.1|gpt-5|o[134]/.test(m)),
+    '9router-public': m => m.startsWith('cc/') || (m.startsWith('cx/') && /gpt-4o|gpt-4-turbo|gpt-4\.1|gpt-5|o[134]/.test(m)),
+  };
+  const canUseVision = aiProvider && aiModel
+    ? (VISION_CAPABLE[aiProvider.toLowerCase()]?.(aiModel.toLowerCase()) ?? false)
+    : false;
 
   const MODES = [
     { id: 'quick',     label: 'Quick',    sub: '~10 tests',  title: 'Essential coverage - fast results' },
@@ -236,7 +250,7 @@ export default function InputForm({
       ? `${userContext.trim()}\n\nAdditional instructions: ${customPrompt}`
       : userContext.trim();
 
-    const allUrls = [ensureProtocol(url), ...extraUrls.map(ensureProtocol)].filter(Boolean);
+    const allUrls = [ensureProtocol(url)];
 
     const streamGenerate = async (singleUrl: string): Promise<boolean> => {
       const routerPublic = aiProvider === '9router-public'
@@ -256,6 +270,7 @@ export default function InputForm({
           fast_mode: fastMode,
           generation_mode: generationMode,
           output_mode: outputMode,
+          crawl_mode: crawlMode,
           nine_router_public_url: routerPublic.url || '',
           nine_router_public_key: routerPublic.key || '',
           ...(auth ? { auth } : {}),
@@ -370,50 +385,17 @@ export default function InputForm({
           <label className="flex items-center gap-2 text-sm font-medium text-slate-700 mb-2">
             <Globe className="w-4 h-4 text-slate-400" />
             Target URL
-            {extraUrls.length > 0 && (
-              <span className="text-xs text-indigo-600 font-normal">({1 + extraUrls.length} URLs)</span>
-            )}
           </label>
-          <div className="flex gap-2">
-            <input
-              id="url"
-              type="text"
-              value={url}
-              onChange={(e) => { setUrl(e.target.value); if (urlError) validateUrl(e.target.value); }}
-              placeholder="https://example.com/login"
-              className={`input-field flex-1 ${urlError ? "input-error" : ""}`}
-              disabled={isSubmitting}
-            />
-            <button
-              type="button"
-              onClick={() => setExtraUrls(prev => [...prev, ""])}
-              disabled={isSubmitting}
-              className="px-3 py-2 text-xs font-medium rounded-lg border border-slate-200 text-slate-600 hover:border-indigo-300 hover:text-indigo-600 transition flex items-center gap-1"
-              title="Add another URL"
-            >
-              <Plus className="w-3.5 h-3.5" /> Add URL
-            </button>
-          </div>
+          <input
+            id="url"
+            type="text"
+            value={url}
+            onChange={(e) => { setUrl(e.target.value); if (urlError) validateUrl(e.target.value); }}
+            placeholder="https://example.com/login"
+            className={`input-field ${urlError ? "input-error" : ""}`}
+            disabled={isSubmitting}
+          />
           {urlError && <p className="mt-1.5 text-xs text-red-500">{urlError}</p>}
-          {extraUrls.map((u, i) => (
-            <div key={i} className="flex gap-2 mt-2">
-              <input
-                type="text"
-                value={u}
-                onChange={e => setExtraUrls(prev => prev.map((x, j) => j === i ? e.target.value : x))}
-                placeholder={`https://example.com/page-${i + 2}`}
-                className="input-field flex-1"
-                disabled={isSubmitting}
-              />
-              <button
-                type="button"
-                onClick={() => setExtraUrls(prev => prev.filter((_, j) => j !== i))}
-                className="px-3 py-2 text-slate-400 hover:text-red-500 transition"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          ))}
         </div>
 
         {/* User Context Textarea */}
@@ -535,6 +517,45 @@ export default function InputForm({
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Crawl Mode */}
+      <div className="mt-4">
+        <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2 uppercase tracking-wider">
+          <Globe className="w-3.5 h-3.5 text-indigo-500" />
+          Crawl Mode
+        </label>
+        <div className="flex gap-2">
+          {([
+            { id: 'static',     label: 'Static',      sub: 'Fast',        title: 'Parse HTML directly - fastest, works on most pages' },
+            { id: 'playwright', label: 'Playwright',   sub: 'JS rendered', title: 'Use headless browser - handles dynamic/JS-heavy pages' },
+            { id: 'vision',     label: 'Vision AI',   sub: 'Screenshot',  title: canUseVision ? 'Screenshot page, AI identifies elements' : 'Your selected model does not support Vision. Use GPT-4o, Claude, or Gemini.' },
+          ] as const).map(m => {
+            const disabled = isSubmitting || (m.id === 'vision' && !canUseVision);
+            return (
+              <button
+                key={m.id}
+                type="button"
+                title={m.title}
+                disabled={disabled}
+                onClick={() => !disabled && setCrawlMode(m.id)}
+                className={`flex-1 flex flex-col items-center py-2 px-3 rounded-lg border text-xs font-semibold transition-all ${
+                  crawlMode === m.id && !disabled
+                    ? 'bg-indigo-50 border-indigo-400 text-indigo-700 shadow-sm shadow-indigo-100'
+                    : disabled
+                      ? 'bg-slate-50 border-slate-100 text-slate-300 cursor-not-allowed'
+                      : 'bg-slate-50 border-slate-200 text-slate-500 hover:border-slate-300'
+                }`}
+              >
+                <span>{m.label}</span>
+                <span className={`text-[10px] font-normal mt-0.5 ${crawlMode === m.id && !disabled ? 'text-indigo-400' : 'text-slate-400'}`}>{m.sub}</span>
+              </button>
+            );
+          })}
+        </div>
+        {crawlMode === 'vision' && canUseVision && (
+          <p className="mt-1.5 text-xs text-indigo-500">Vision AI requires the Playwright crawler service (CRAWLER_URL) to take screenshots.</p>
+        )}
       </div>
 
       {/* Auth Section (Collapsible) */}

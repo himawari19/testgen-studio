@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import { crawlPage, PageData } from '../../crawler';
+import { crawlPage, screenshotPage, PageData, DOMElement } from '../../crawler';
 import { generateTestCases, generateScriptForTestCase, getFastModel, getFileExtension } from '../../ai/analyzer';
+import { callVisionLLM, supportsVision } from '../../ai/llm';
 import { getDB, ensureSchema } from '../../db';
 import { auth as getSession } from '@/auth';
 import crypto from 'crypto';
@@ -74,7 +75,7 @@ function formatTestCaseTable(testCases: any[]): string {
 
 export async function POST(request: Request) {
   try {
-    const { url, user_context, ai_provider, ai_model, api_key, auth, framework, language, fast_mode, generation_mode, output_mode, nine_router_public_url, nine_router_public_key } = await request.json();
+    const { url, user_context, ai_provider, ai_model, api_key, auth, framework, language, fast_mode, generation_mode, output_mode, crawl_mode, nine_router_public_url, nine_router_public_key } = await request.json();
     const session = await getSession();
     const userId = session?.user?.email || null;
     const modeMinTC: Record<string, number> = { quick: 10, standard: 30, thorough: 50 };
@@ -108,10 +109,75 @@ export async function POST(request: Request) {
           // cases-only = planning only, fast model is sufficient; fast_mode also forces fast model
           const stage1Model = (fast_mode || output_mode === 'cases') ? getFastModel(p, ai_model || '') : (ai_model || '');
 
-          // Step 1: Crawl (use cache if available)
+          // Step 1: Crawl / Screenshot
           const cached = getCachedPage(url);
           let pageData: PageData;
-          if (cached) {
+
+          if (crawl_mode === 'vision') {
+            // Vision mode: screenshot → Vision AI extract elements
+            if (!supportsVision(p, ai_model || '')) {
+              sendEvent('error', `Model "${ai_model}" does not support Vision. Please use GPT-4o, Claude 3+, or Gemini for this mode.`);
+              controller.close();
+              return;
+            }
+            const serviceUrl = process.env.CRAWLER_URL?.replace(/\/$/, '');
+            if (!serviceUrl) {
+              sendEvent('error', 'Vision mode requires the Playwright crawler service (CRAWLER_URL is not configured).');
+              controller.close();
+              return;
+            }
+            sendEvent('crawling', 'Taking screenshot of page...');
+            let screenshotData: { title: string; screenshot: string };
+            try {
+              screenshotData = await screenshotPage(url, auth, serviceUrl);
+            } catch (err: any) {
+              if (err.code === 'CRAWLER_QUEUED') {
+                sendEvent('error', 'Crawler is at full capacity (2/2 slots in use). Please try again later or switch to Static mode.');
+                controller.close();
+                return;
+              }
+              throw err;
+            }
+            sendEvent('analyzing', 'AI analyzing screenshot to identify UI elements...');
+            const visionUsage = { totalTokens: 0 };
+            const visionSystem = `You are a web UI analyst. Analyze the screenshot and extract all visible interactive elements. Return ONLY a valid JSON object: {"elements":[{"tag":"input|button|a|select|textarea","type":"","text_content":"","placeholder":"","aria_label":"","id":"","name":"","css_selector":""}]}`;
+            const visionPrompt = `Analyze this web page screenshot. Identify ALL visible interactive elements (inputs, buttons, links, dropdowns, checkboxes, etc.) and return JSON. For css_selector, use the best guess (#id, [name=x], button:has-text, etc).`;
+            let visionRaw = '';
+            try {
+              visionRaw = await callVisionLLM(p, ai_model || '', apiKey, visionSystem, visionPrompt, screenshotData.screenshot, 2048, visionUsage, publicBaseUrl);
+            } catch (err: any) {
+              sendEvent('error', `Vision AI error: ${err.message}`);
+              controller.close();
+              return;
+            }
+            let visionElements: DOMElement[] = [];
+            try {
+              const jsonMatch = visionRaw.match(/\{[\s\S]*\}/);
+              const parsed = JSON.parse(jsonMatch?.[0] || visionRaw);
+              visionElements = (parsed.elements || []).map((el: any): DOMElement => ({
+                tag: el.tag || 'button',
+                id: el.id || null,
+                name: el.name || null,
+                type: el.type || null,
+                placeholder: el.placeholder || null,
+                aria_label: el.aria_label || null,
+                label_text: null,
+                text_content: (el.text_content || '').substring(0, 40) || null,
+                css_selector: el.css_selector || el.tag || 'button',
+              }));
+            } catch {
+              sendEvent('error', 'Vision AI returned invalid response. Try again or switch to Playwright mode.');
+              controller.close();
+              return;
+            }
+            pageData = { title: screenshotData.title, url, elements: visionElements };
+            setCachedPage(url, pageData);
+            sendEvent('crawled', `Vision AI identified ${visionElements.length} UI elements`, {
+              elements_found: visionElements.length,
+              page_title: screenshotData.title,
+              from_cache: false,
+            });
+          } else if (cached) {
             sendEvent('crawling', 'Loading page data from cache...');
             pageData = cached;
             sendEvent('crawled', `Cache hit: ${pageData.elements.length} elements found`, {
@@ -121,7 +187,16 @@ export async function POST(request: Request) {
             });
           } else {
             sendEvent('crawling', 'Crawling page and extracting elements...');
-            pageData = await crawlPage(url, auth);
+            try {
+              pageData = await crawlPage(url, auth, crawl_mode);
+            } catch (err: any) {
+              if (err.code === 'CRAWLER_QUEUED') {
+                sendEvent('error', 'Crawler is at full capacity (2/2 slots in use). Please try again later or switch to Static mode.', { crawler_busy: true });
+                controller.close();
+                return;
+              }
+              throw err;
+            }
             if (!pageData.elements || pageData.elements.length === 0) {
               sendEvent('error', 'No interactive elements found. This page may render its content with JavaScript (SPA), which static crawling cannot read - try a server-rendered page or the page that holds the actual form.');
               controller.close();

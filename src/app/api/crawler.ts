@@ -141,18 +141,54 @@ async function crawlPageWithService(targetURL: string, auth: AuthConfig | undefi
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (secret) headers['x-crawler-secret'] = secret;
 
-  const res = await axios.post(`${serviceUrl}/crawl`, { url: targetURL, auth }, { headers, timeout: 60000 });
+  const res = await axios.post(`${serviceUrl}/crawl`, { url: targetURL, auth }, {
+    headers,
+    timeout: 60000,
+    validateStatus: (s) => s < 500,
+  });
+  if (res.status === 429 && res.data?.queued) {
+    const err: any = new Error('Crawler at capacity');
+    err.code = 'CRAWLER_QUEUED';
+    err.active = res.data.active;
+    err.max = res.data.max;
+    throw err;
+  }
+  if (res.status >= 400) throw new Error(res.data?.error || `Crawler error ${res.status}`);
   const data = res.data;
 
   const elements: DOMElement[] = (data.elements || []).map(normalizePlElement);
   return { title: data.title || 'Untitled Page', url: targetURL, elements };
 }
 
-export async function crawlPage(targetURL: string, auth?: AuthConfig): Promise<PageData> {
+export async function screenshotPage(targetURL: string, auth: AuthConfig | undefined, serviceUrl: string): Promise<{ title: string; screenshot: string }> {
+  const secret = process.env.CRAWLER_SECRET || '';
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (secret) headers['x-crawler-secret'] = secret;
+
+  const res = await axios.post(`${serviceUrl}/screenshot`, { url: targetURL, auth }, {
+    headers,
+    timeout: 60000,
+    validateStatus: (s) => s < 500,
+  });
+  if (res.status === 429 && res.data?.queued) {
+    const err: any = new Error('Crawler at capacity');
+    err.code = 'CRAWLER_QUEUED';
+    err.active = res.data.active;
+    err.max = res.data.max;
+    throw err;
+  }
+  if (res.status >= 400) throw new Error(res.data?.error || `Screenshot error ${res.status}`);
+  return { title: res.data.title || 'Untitled', screenshot: res.data.screenshot };
+}
+
+export async function crawlPage(targetURL: string, auth?: AuthConfig, mode?: 'static' | 'playwright'): Promise<PageData> {
   const serviceUrl = process.env.CRAWLER_URL?.replace(/\/$/, '');
-  if (serviceUrl) {
+  if (serviceUrl && mode !== 'static') {
     console.log('Crawling via Playwright service:', targetURL);
     return crawlPageWithService(targetURL, auth, serviceUrl);
+  }
+  if (mode === 'playwright' && !serviceUrl) {
+    console.warn('Playwright mode requested but CRAWLER_URL not configured, falling back to static');
   }
 
   console.log('Crawling URL (cheerio):', targetURL);
