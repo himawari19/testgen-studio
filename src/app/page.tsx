@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useSession } from "next-auth/react";
+import UserMenu from "@/components/UserMenu";
 import {
   Layers,
   Zap,
@@ -157,7 +158,9 @@ export default function Landing() {
             <a href="#how" className="hover:text-slate-900 transition">How it works</a>
             <a href="#faq" className="hover:text-slate-900 transition">FAQ</a>
           </nav>
-          <div />
+          <div className="flex justify-end">
+            <UserMenu />
+          </div>
         </div>
       </header>
 
