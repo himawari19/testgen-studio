@@ -19,7 +19,7 @@ export default async function SharePage({ params }: { params: { id: string } }) 
   return (
     <div className="min-h-screen bg-slate-50">
       <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center gap-3">
-        <a href="/app" className="text-sm font-bold text-indigo-600">TestGen Studio</a>
+        <a href="/" className="text-sm font-bold text-indigo-600">TestGen Studio</a>
         <span className="text-slate-300">·</span>
         <span className="text-sm text-slate-500">Shared test suite</span>
         <span className="ml-auto text-xs text-slate-400 truncate max-w-xs">{record.url}</span>

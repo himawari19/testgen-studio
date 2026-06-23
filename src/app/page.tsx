@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useSession } from "next-auth/react";
 import {
   Layers,
   Zap,
@@ -138,6 +139,7 @@ const FAQ = [
 
 export default function Landing() {
   const [sample, setSample] = useState(0);
+  const { data: session } = useSession();
 
   return (
     <div className="min-h-screen bg-white text-slate-900">
@@ -173,17 +175,20 @@ export default function Landing() {
             Paste a URL, choose your AI provider, and get structured test cases plus
             runnable Playwright, Cypress or Selenium scripts - in seconds.
           </p>
-          <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3"><Link
-                  href="/app"
-                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 transition shadow-sm shadow-indigo-600/20"
-                >
-                  <Zap className="w-4 h-4" />
-                  Try it free
-                </Link>
-                <Link href="/login" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-slate-700 bg-white border border-slate-200 hover:border-slate-300 transition">
-                  <GoogleIcon />
-                  Sign in with Google
-                </Link>
+          <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
+            <Link
+              href="/app"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 transition shadow-sm shadow-indigo-600/20"
+            >
+              <Zap className="w-4 h-4" />
+              {session ? "Go to App" : "Try it free"}
+            </Link>
+            {!session && (
+              <Link href="/login" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-slate-700 bg-white border border-slate-200 hover:border-slate-300 transition">
+                <GoogleIcon />
+                Sign in with Google
+              </Link>
+            )}
           </div>
           <p className="mt-4 text-xs text-slate-400">
             No card required - Generate works without an account

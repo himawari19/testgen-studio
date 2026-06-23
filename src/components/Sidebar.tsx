@@ -52,7 +52,7 @@ export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
           >
             {mobileOpen ? <X className="w-5 h-5 text-slate-600" /> : <Menu className="w-5 h-5 text-slate-600" />}
           </button>
-          <Link href="/app" className="flex items-center gap-2" aria-label="Go to app">
+          <Link href="/" className="flex items-center gap-2" aria-label="Back to landing page">
             <div className="w-7 h-7 bg-indigo-600 rounded-md flex items-center justify-center">
               <Layers className="w-4 h-4 text-white" />
             </div>
@@ -76,7 +76,7 @@ export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
         }`}
       >
         {/* Logo */}
-        <Link href="/app" className="flex items-center gap-3 px-4 py-5 border-b border-slate-100" aria-label="Go to app">
+        <Link href="/" className="flex items-center gap-3 px-4 py-5 border-b border-slate-100" aria-label="Back to landing page">
           <div className="w-9 h-9 bg-indigo-600 rounded-lg flex items-center justify-center flex-shrink-0">
             <Layers className="w-5 h-5 text-white" />
           </div>
@@ -117,7 +117,7 @@ export default function Sidebar({ activePage, onNavigate }: SidebarProps) {
         }`}
       >
         {/* Logo */}
-        <Link href="/app" className="flex items-center gap-3 px-4 py-5 border-b border-slate-100" aria-label="Go to app">
+        <Link href="/" className="flex items-center gap-3 px-4 py-5 border-b border-slate-100" aria-label="Back to landing page">
           <div className="w-9 h-9 bg-indigo-600 rounded-lg flex items-center justify-center flex-shrink-0">
             <Layers className="w-5 h-5 text-white" />
           </div>
