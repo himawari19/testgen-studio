@@ -83,6 +83,11 @@ export default function ResultsDisplay({ results, onGenerateAnother }: ResultsDi
           >
             <Table2 className="w-4 h-4" />
             Test Cases
+            {(results.test_cases?.length ?? 0) > 0 && (
+              <span className="text-xs bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">
+                {results.test_cases!.length}
+              </span>
+            )}
           </button>
           <button
             onClick={() => setActiveTab("scripts")}
