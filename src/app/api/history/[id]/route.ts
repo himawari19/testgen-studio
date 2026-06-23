@@ -34,6 +34,24 @@ export async function GET(
   }
 }
 
+export async function PATCH(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await auth();
+    const userId = session?.user?.email;
+    if (!userId) return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 });
+
+    const { is_public } = await request.json();
+    const sql = getDB();
+    await sql`UPDATE history SET is_public = ${!!is_public} WHERE id = ${params.id} AND user_id = ${userId}`;
+    return NextResponse.json({ success: true, is_public: !!is_public });
+  } catch (err: any) {
+    return NextResponse.json({ detail: err.message }, { status: 500 });
+  }
+}
+
 export async function DELETE(
   request: Request,
   { params }: { params: { id: string } }

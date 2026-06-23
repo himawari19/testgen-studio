@@ -19,6 +19,7 @@ export interface TestCase {
 
 export interface GenerateResponse {
   url?: string;
+  history_id?: string;
   test_case_table: string;
   test_cases?: TestCase[];
   scripts: ScriptFile[];

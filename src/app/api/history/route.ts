@@ -4,6 +4,18 @@ import { auth } from '@/auth';
 import fs from 'fs';
 import path from 'path';
 
+async function getTeamUserIds(sql: any, userId: string): Promise<string[]> {
+  try {
+    const teams = await sql`SELECT team_id FROM team_members WHERE user_id = ${userId}`;
+    if (!teams.length) return [userId];
+    const teamIds = teams.map((t: any) => t.team_id);
+    const members = await sql`SELECT DISTINCT user_id FROM team_members WHERE team_id = ANY(${teamIds})`;
+    return members.map((m: any) => m.user_id);
+  } catch {
+    return [userId];
+  }
+}
+
 export async function GET(request: Request) {
   try {
     const session = await auth();
@@ -17,13 +29,15 @@ export async function GET(request: Request) {
     const offset = parseInt(searchParams.get('offset') || '0', 10);
 
     const sql = getDB();
+    // include history from all team members
+    const userIds = await getTeamUserIds(sql, userId);
     let records;
 
     if (search) {
       const searchParam = '%' + search + '%';
       records = await sql`
         SELECT id, url, user_context, page_title, elements_found,
-               ai_provider, ai_model, scripts_count,
+               ai_provider, ai_model, scripts_count, user_id,
                CASE
                  WHEN jsonb_array_length(COALESCE(test_cases_json,'[]')::jsonb) > 0
                  THEN jsonb_array_length(test_cases_json::jsonb)
@@ -31,13 +45,13 @@ export async function GET(request: Request) {
                END AS test_cases_count,
                created_at
         FROM history
-        WHERE user_id = ${userId}
+        WHERE user_id = ANY(${userIds})
           AND (url ILIKE ${searchParam} OR user_context ILIKE ${searchParam} OR page_title ILIKE ${searchParam})
         ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`;
     } else {
       records = await sql`
         SELECT id, url, user_context, page_title, elements_found,
-               ai_provider, ai_model, scripts_count,
+               ai_provider, ai_model, scripts_count, user_id,
                CASE
                  WHEN jsonb_array_length(COALESCE(test_cases_json,'[]')::jsonb) > 0
                  THEN jsonb_array_length(test_cases_json::jsonb)
@@ -45,7 +59,7 @@ export async function GET(request: Request) {
                END AS test_cases_count,
                created_at
         FROM history
-        WHERE user_id = ${userId}
+        WHERE user_id = ANY(${userIds})
         ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`;
     }
 

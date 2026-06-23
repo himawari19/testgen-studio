@@ -5,7 +5,7 @@ import { GenerateResponse } from "@/types";
 import TestCaseTable from "./TestCaseTable";
 import ScriptViewer from "./ScriptViewer";
 import DownloadButtons from "./DownloadButtons";
-import { CheckCircle2, Table2, FileCode2, RotateCcw } from "lucide-react";
+import { CheckCircle2, Table2, FileCode2, RotateCcw, Share2, Check } from "lucide-react";
 
 interface ResultsDisplayProps {
   results: GenerateResponse;
@@ -14,6 +14,26 @@ interface ResultsDisplayProps {
 
 export default function ResultsDisplay({ results, onGenerateAnother }: ResultsDisplayProps) {
   const [activeTab, setActiveTab] = useState<"table" | "scripts">("table");
+  const [shared, setShared] = useState(false);
+  const [sharing, setSharing] = useState(false);
+
+  const handleShare = async () => {
+    if (!results.history_id || sharing) return;
+    setSharing(true);
+    try {
+      await fetch(`/api/history/${results.history_id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_public: true }),
+      });
+      const shareUrl = `${window.location.origin}/share/${results.history_id}`;
+      await navigator.clipboard.writeText(shareUrl);
+      setShared(true);
+      setTimeout(() => setShared(false), 3000);
+    } finally {
+      setSharing(false);
+    }
+  };
 
   // ponytail: Dynamically detect the framework type of generated scripts
   const getFrameworkLabel = (): string => {
@@ -44,7 +64,24 @@ export default function ResultsDisplay({ results, onGenerateAnother }: ResultsDi
               </p>
             </div>
           </div>
-          <DownloadButtons results={results} />
+          <div className="flex items-center gap-2">
+            {results.history_id && (
+              <button
+                type="button"
+                onClick={handleShare}
+                disabled={sharing}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition ${
+                  shared
+                    ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                    : "border-slate-200 text-slate-600 hover:border-slate-300"
+                }`}
+              >
+                {shared ? <Check className="w-3 h-3" /> : <Share2 className="w-3 h-3" />}
+                {shared ? "Link copied!" : "Share"}
+              </button>
+            )}
+            <DownloadButtons results={results} />
+          </div>
         </div>
       </div>
 

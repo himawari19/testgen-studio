@@ -224,6 +224,7 @@ export async function POST(request: Request) {
           sendEvent('complete', 'Generation complete!', {
             result: {
               url,
+              history_id: userId ? id : undefined,
               test_case_table: table,
               scripts,
               test_cases: testCases,

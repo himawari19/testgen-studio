@@ -2,8 +2,6 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { useSession, signIn } from "next-auth/react";
-import UserMenu from "@/components/UserMenu";
 import {
   Layers,
   Zap,
@@ -11,9 +9,6 @@ import {
   Code2,
   Activity,
   MousePointerClick,
-  Sparkles,
-  ShieldCheck,
-  Gauge,
   Check,
   ArrowRight,
   FileSpreadsheet,
@@ -112,13 +107,13 @@ const EXCEL_ROWS = [
 ];
 
 const PROVIDERS = [
-  { name: "OpenAI", icon: "https://api.iconify.design/simple-icons:openai.svg?color=%23000000" },
-  { name: "Claude", icon: "https://api.iconify.design/simple-icons:anthropic.svg?color=%23d97706" },
-  { name: "Gemini", icon: "https://api.iconify.design/simple-icons:googlegemini.svg?color=%232563eb" },
-  { name: "Groq", icon: "https://cdn.jsdelivr.net/gh/lobehub/lobe-icons/packages/static-png/dark/groq.png" },
-  { name: "DeepSeek", icon: "https://api.iconify.design/simple-icons:deepseek.svg?color=%230891b2" },
-  { name: "Moonshot", icon: "https://cdn.jsdelivr.net/gh/lobehub/lobe-icons/packages/static-png/dark/moonshot.png" },
-  { name: "Qwen", icon: "https://api.iconify.design/simple-icons:qwen.svg?color=%23d97706" },
+  { name: "OpenAI", icon: "/logos/openai.svg" },
+  { name: "Claude", icon: "/logos/claude.svg" },
+  { name: "Gemini", icon: "/logos/gemini.svg" },
+  { name: "Groq", icon: "/logos/groq.png" },
+  { name: "DeepSeek", icon: "/logos/deepseek.svg" },
+  { name: "Moonshot", icon: "/logos/moonshot.png" },
+  { name: "Qwen", icon: "/logos/qwen.svg" },
 ];
 
 const FAQ = [
@@ -141,7 +136,6 @@ const FAQ = [
 ];
 
 export default function Landing() {
-  const { data: session } = useSession();
   const [sample, setSample] = useState(0);
 
   return (
@@ -160,7 +154,7 @@ export default function Landing() {
             <a href="#how" className="hover:text-slate-900 transition">How it works</a>
             <a href="#faq" className="hover:text-slate-900 transition">FAQ</a>
           </nav>
-          <div className="flex justify-end">{session?.user ? <UserMenu /> : null}</div>
+          <div />
         </div>
       </header>
 
@@ -169,10 +163,6 @@ export default function Landing() {
         <div className="absolute inset-0 -z-10 bg-gradient-to-b from-indigo-50/70 via-white to-white" />
         <div className="absolute -top-24 left-1/2 -translate-x-1/2 -z-10 w-[680px] h-[680px] rounded-full bg-indigo-200/30 blur-3xl" />
         <div className="max-w-none px-5 sm:px-8 lg:px-10 pt-10 sm:pt-12 pb-14 text-center">
-          <div className="hidden">
-            <Sparkles className="w-3.5 h-3.5" />
-            Bring your own AI key · 5 free generations
-          </div>
           <h1 className="text-4xl sm:text-6xl font-bold tracking-tight leading-[1.05]">
             Test cases & automation
             <br className="hidden sm:block" />
@@ -182,38 +172,20 @@ export default function Landing() {
             Paste a URL, choose your AI provider, and get structured test cases plus
             runnable Playwright, Cypress or Selenium scripts — in seconds.
           </p>
-          <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
-            {session?.user ? (
-              <Link
-                href="/app"
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 transition shadow-sm shadow-indigo-600/20"
-              >
-                <Zap className="w-4 h-4" />
-                Open Dashboard
-                <ArrowRight className="w-4 h-4" />
-              </Link>
-            ) : (
-              <>
-                <Link
+          <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3"><Link
                   href="/app"
                   className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 transition shadow-sm shadow-indigo-600/20"
                 >
                   <Zap className="w-4 h-4" />
                   Try it free
                 </Link>
-                <button
-                  type="button"
-                  onClick={() => signIn("google", { callbackUrl: "/app" })}
-                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-slate-700 bg-white border border-slate-200 hover:border-slate-300 transition"
-                >
+                <Link href="/login" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-slate-700 bg-white border border-slate-200 hover:border-slate-300 transition">
                   <GoogleIcon />
                   Sign in with Google
-                </button>
-              </>
-            )}
+                </Link>
           </div>
           <p className="mt-4 text-xs text-slate-400">
-            {session?.user ? "Welcome back · Pick up where you left off" : "No card required · Generate works without an account"}
+            No card required - Generate works without an account
           </p>
 
           {/* Hero mockups */}
@@ -239,17 +211,6 @@ export default function Landing() {
               </div>
               <pre className="px-5 py-4 min-h-[320px] text-[12.5px] leading-relaxed font-mono text-slate-300 overflow-x-auto whitespace-pre-wrap">
                 {CODE_SAMPLES[sample].code}
-              </pre>
-              <pre className="hidden">
-<span className="text-purple-400">import</span> {"{ test, expect }"} <span className="text-purple-400">from</span> <span className="text-emerald-300">{'"@playwright/test"'}</span>;{"\n\n"}
-<span className="text-slate-500">{"// TC-001 · Login with valid credentials · CRITICAL"}</span>{"\n"}
-<span className="text-purple-400">test</span>(<span className="text-emerald-300">{'"valid login redirects to dashboard"'}</span>, <span className="text-purple-400">async</span> ({"{ page }"}) ={">"} {"{"}{"\n"}
-{"  "}<span className="text-purple-400">await</span> page.<span className="text-sky-300">goto</span>(<span className="text-emerald-300">{'"https://example.com/login"'}</span>);{"\n"}
-{"  "}<span className="text-purple-400">await</span> page.<span className="text-sky-300">fill</span>(<span className="text-emerald-300">{'"#email"'}</span>, <span className="text-emerald-300">{'"user@test.com"'}</span>);{"\n"}
-{"  "}<span className="text-purple-400">await</span> page.<span className="text-sky-300">fill</span>(<span className="text-emerald-300">{'"#password"'}</span>, <span className="text-emerald-300">{'"correct-horse"'}</span>);{"\n"}
-{"  "}<span className="text-purple-400">await</span> page.<span className="text-sky-300">click</span>(<span className="text-emerald-300">{'"button[type=submit]"'}</span>);{"\n"}
-{"  "}<span className="text-purple-400">await</span> <span className="text-sky-300">expect</span>(page).<span className="text-sky-300">toHaveURL</span>(<span className="text-emerald-300">{'"/dashboard"'}</span>);{"\n"}
-{"}"});
               </pre>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-indigo-900/10 overflow-hidden">
@@ -305,27 +266,6 @@ export default function Landing() {
               ))}
             </div>
           </div>
-        </div>
-      </section>
-
-      {/* Value props */}
-      <section className="hidden">
-        <div className="grid sm:grid-cols-3 gap-4">
-          {[
-            { icon: <Gauge className="w-5 h-5" />, title: "Seconds, not hours", desc: "Full suites generated while you grab coffee." },
-            { icon: <ShieldCheck className="w-5 h-5" />, title: "Keys never leave you", desc: "Stored in your browser, never on our servers." },
-            { icon: <Sparkles className="w-5 h-5" />, title: "Your AI, your cost", desc: "Bring any provider key — pay them directly." },
-          ].map((v) => (
-            <div key={v.title} className="flex items-start gap-3 p-4 rounded-xl bg-slate-50 border border-slate-100">
-              <div className="w-9 h-9 rounded-lg bg-white border border-slate-200 text-indigo-600 flex items-center justify-center flex-shrink-0">
-                {v.icon}
-              </div>
-              <div>
-                <h3 className="font-semibold text-sm">{v.title}</h3>
-                <p className="text-sm text-slate-500 mt-0.5">{v.desc}</p>
-              </div>
-            </div>
-          ))}
         </div>
       </section>
 
@@ -395,24 +335,6 @@ export default function Landing() {
               <p className="mt-3 text-sm text-slate-500 leading-relaxed">{item.a}</p>
             </details>
           ))}
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="hidden">
-        <div className="rounded-3xl bg-gradient-to-br from-indigo-600 to-purple-600 px-8 py-14 text-center text-white relative overflow-hidden">
-          <div className="absolute -top-16 -right-16 w-56 h-56 rounded-full bg-white/10 blur-2xl" />
-          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight relative">Start generating tests now</h2>
-          <p className="mt-3 text-indigo-100 max-w-md mx-auto relative">
-            Five free generations, no account needed. Your API keys stay in your browser.
-          </p>
-          <Link
-            href="/app"
-            className="mt-8 inline-flex items-center gap-2 px-7 py-3.5 rounded-xl text-sm font-semibold text-indigo-700 bg-white hover:bg-indigo-50 transition relative"
-          >
-            <Zap className="w-4 h-4" />
-            Open TestGen Studio
-          </Link>
         </div>
       </section>
 

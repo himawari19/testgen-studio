@@ -69,11 +69,27 @@ export async function ensureSchema() {
   if (migrated) return;
   const db = getSQL();
   await db`ALTER TABLE history ADD COLUMN IF NOT EXISTS user_id TEXT`;
+  await db`ALTER TABLE history ADD COLUMN IF NOT EXISTS is_public BOOLEAN DEFAULT false`;
   await db`ALTER TABLE monitored_urls ADD COLUMN IF NOT EXISTS user_id TEXT`;
   // monitors are per-user: a URL can be watched by many users
   await db`ALTER TABLE monitored_urls DROP CONSTRAINT IF EXISTS monitored_urls_url_key`;
   await db`CREATE UNIQUE INDEX IF NOT EXISTS monitored_urls_user_url_key ON monitored_urls(user_id, url)`;
   await db`CREATE INDEX IF NOT EXISTS idx_history_user_id ON history(user_id)`;
+  // team workspace tables
+  await db`CREATE TABLE IF NOT EXISTS teams (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    owner_id TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  )`;
+  await db`CREATE TABLE IF NOT EXISTS team_members (
+    team_id TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    user_id TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'member',
+    created_at TEXT NOT NULL,
+    PRIMARY KEY(team_id, user_id)
+  )`;
+  await db`ALTER TABLE history ADD COLUMN IF NOT EXISTS team_id TEXT`;
   migrated = true;
 }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { ChevronDown, Play, Loader2, CheckCircle2, XCircle } from "lucide-react";
+import { ChevronDown, Play, Loader2, CheckCircle2, XCircle, Download, Pencil, Check, X as XIcon } from "lucide-react";
 import { TestCase, ScriptFile } from "@/types";
 import { useIsLocal } from "@/lib/useIsLocal";
 
@@ -117,6 +117,37 @@ function getCaseId(tc: TestCase, index: number): string {
   return `${prefix}-${String(index + 1).padStart(3, "0")}`;
 }
 
+function dlBlob(filename: string, mime: string, content: string) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([content], { type: mime }));
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function exportCSV(cases: TestCase[]) {
+  const hdrs = ["#", "ID", "Name", "Type", "Pre Condition", "Steps", "Expected Result", "Priority"];
+  const q = (s: string) => `"${String(s ?? "").replace(/"/g, '""')}"`;
+  const rows = cases.map((tc, i) => [
+    tc.number, getCaseId(tc, i), tc.name, tc.type,
+    tc.pre_condition, (tc.test_steps || []).join(" → "), tc.expected_result, tc.priority,
+  ].map(v => q(String(v))).join(","));
+  dlBlob("test-cases.csv", "text/csv", [hdrs.map(q).join(","), ...rows].join("\n"));
+}
+
+function exportGherkin(cases: TestCase[]) {
+  const lines = ["Feature: Generated Test Cases", ""];
+  for (const tc of cases) {
+    lines.push(`  # ${tc.priority}`);
+    lines.push(`  Scenario: ${tc.name}`);
+    if (tc.pre_condition) lines.push(`    Given ${tc.pre_condition}`);
+    for (const step of (tc.test_steps || [])) lines.push(`    When ${step}`);
+    if (tc.expected_result) lines.push(`    Then ${tc.expected_result}`);
+    lines.push("");
+  }
+  dlBlob("test-cases.feature", "text/plain", lines.join("\n"));
+}
+
 function Stat({ label, val, color }: { label: string; val: number; color: string }) {
   return (
     <div className="flex flex-col items-center leading-none">
@@ -132,12 +163,18 @@ export default function TestCaseTable({ markdown, testCases, scripts, url }: Tes
   const [priorityFilter, setPriorityFilter] = useState<typeof PRIORITY_OPTS[number]>("ALL");
   const [runStatus, setRunStatus]           = useState<Record<number, RunState>>({});
   const [isRunning, setIsRunning]           = useState(false);
+  const [showExport, setShowExport]         = useState(false);
+  const [editIdx, setEditIdx]               = useState<number | null>(null);
+  const [editDraft, setEditDraft]           = useState<Partial<TestCase>>({});
   const isLocal = useIsLocal();
 
-  const cases = useMemo(
+  const baseCases = useMemo(
     () => (testCases && testCases.length > 0) ? testCases : parseMarkdownToTestCases(markdown),
     [testCases, markdown]
   );
+  const [cases, setCases] = useState<TestCase[]>([]);
+  // sync when baseCases changes (new generation)
+  useMemo(() => setCases(baseCases), [baseCases]);
 
   const runTest = async (tc: TestCase, index: number) => {
     const script = scripts?.[index];
@@ -218,17 +255,49 @@ export default function TestCaseTable({ markdown, testCases, scripts, url }: Tes
             ({filtered.length}{filtered.length !== cases.length ? `/${cases.length}` : ""} cases)
           </span>
         </h3>
-        {isLocal && scripts && scripts.length > 0 && (
-          <button
-            type="button"
-            onClick={runAll}
-            disabled={isRunning}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-60 transition"
-          >
-            {isRunning ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
-            {isRunning ? "Running..." : "Run Tests"}
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {/* Export dropdown */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowExport(v => !v)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md border border-slate-200 text-slate-600 hover:border-slate-300 transition"
+            >
+              <Download className="w-3 h-3" />
+              Export
+              <ChevronDown className={`w-3 h-3 transition-transform ${showExport ? "rotate-180" : ""}`} />
+            </button>
+            {showExport && (
+              <div className="absolute right-0 top-full mt-1 z-20 bg-white border border-slate-200 rounded-lg shadow-lg py-1 min-w-[140px]">
+                <button
+                  type="button"
+                  onClick={() => { exportCSV(cases); setShowExport(false); }}
+                  className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 transition"
+                >
+                  Download CSV
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { exportGherkin(cases); setShowExport(false); }}
+                  className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 transition"
+                >
+                  Download .feature (Gherkin)
+                </button>
+              </div>
+            )}
+          </div>
+          {isLocal && scripts && scripts.length > 0 && (
+            <button
+              type="button"
+              onClick={runAll}
+              disabled={isRunning}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-60 transition"
+            >
+              {isRunning ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
+              {isRunning ? "Running..." : "Run Tests"}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Stats + filters row */}
@@ -270,6 +339,7 @@ export default function TestCaseTable({ markdown, testCases, scripts, url }: Tes
               {["#", "Test Case ID", "Test Case Name", "Type", "Pre Condition", "Test Steps", "Expected Result", "Actual Result", "Status", "Priority", "Evidence"].map(h => (
                 <th key={h} className="px-4 py-3 text-left font-semibold text-slate-600 uppercase tracking-wider whitespace-nowrap">{h}</th>
               ))}
+              <th className="px-4 py-3" />
               {isLocal && scripts?.length ? <th className="px-4 py-3" /> : null}
             </tr>
           </thead>
@@ -277,26 +347,47 @@ export default function TestCaseTable({ markdown, testCases, scripts, url }: Tes
             {filtered.map((tc, i) => {
               const rs = runStatus[tc.number];
               const tcStatus = (rs?.status || "pending").toUpperCase();
+              const isEditing = editIdx === i;
+              const startEdit = () => { setEditIdx(i); setEditDraft({ name: tc.name, pre_condition: tc.pre_condition, test_steps: tc.test_steps, expected_result: tc.expected_result }); };
+              const saveEdit = () => {
+                setCases(prev => prev.map((c, j) => j === i ? { ...c, ...editDraft, test_steps: typeof editDraft.test_steps === "string" ? splitSteps(editDraft.test_steps as any) : editDraft.test_steps ?? c.test_steps } : c));
+                setEditIdx(null);
+              };
               return (
-                <tr key={i} className="hover:bg-slate-50/50 transition align-top">
+                <tr key={i} className={`hover:bg-slate-50/50 transition align-top ${isEditing ? "bg-indigo-50/30" : ""}`}>
                   <td className="px-4 py-3 text-slate-500">{tc.number}</td>
                   <td className="px-4 py-3 font-mono text-slate-700 whitespace-nowrap">{getCaseId(tc, i)}</td>
-                  <td className="px-4 py-3 text-slate-800 font-medium max-w-[180px]">{tc.name}</td>
+                  <td className="px-4 py-3 text-slate-800 font-medium max-w-[180px]">
+                    {isEditing
+                      ? <input className="w-full text-xs border border-indigo-300 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-400" value={editDraft.name ?? ""} onChange={e => setEditDraft(d => ({ ...d, name: e.target.value }))} />
+                      : tc.name}
+                  </td>
                   <td className="px-4 py-3">
                     <Badge value={tc.type} styleMap={TYPE_STYLE} />
                   </td>
-                  <td className="px-4 py-3 text-slate-600 max-w-[160px]">{tc.pre_condition}</td>
-                  <td className="px-4 py-3 text-slate-700 max-w-[240px]">
-                    <ol className="space-y-0.5 list-none">
-                      {(tc.test_steps || []).map((s, n) => (
-                        <li key={n} className="flex gap-1.5">
-                          <span className="text-slate-400 shrink-0 w-4 text-right">{n + 1}.</span>
-                          <span>{s}</span>
-                        </li>
-                      ))}
-                    </ol>
+                  <td className="px-4 py-3 text-slate-600 max-w-[160px]">
+                    {isEditing
+                      ? <input className="w-full text-xs border border-indigo-300 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-400" value={editDraft.pre_condition ?? ""} onChange={e => setEditDraft(d => ({ ...d, pre_condition: e.target.value }))} />
+                      : tc.pre_condition}
                   </td>
-                  <td className="px-4 py-3 text-slate-700 max-w-[180px]">{tc.expected_result}</td>
+                  <td className="px-4 py-3 text-slate-700 max-w-[240px]">
+                    {isEditing
+                      ? <textarea rows={3} className="w-full text-xs border border-indigo-300 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-400 resize-y" value={(editDraft.test_steps as any ?? tc.test_steps).join("\n")} onChange={e => setEditDraft(d => ({ ...d, test_steps: e.target.value.split("\n") as any }))} />
+                      : <ol className="space-y-0.5 list-none">
+                          {(tc.test_steps || []).map((s, n) => (
+                            <li key={n} className="flex gap-1.5">
+                              <span className="text-slate-400 shrink-0 w-4 text-right">{n + 1}.</span>
+                              <span>{s}</span>
+                            </li>
+                          ))}
+                        </ol>
+                    }
+                  </td>
+                  <td className="px-4 py-3 text-slate-700 max-w-[180px]">
+                    {isEditing
+                      ? <textarea rows={2} className="w-full text-xs border border-indigo-300 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-400 resize-y" value={editDraft.expected_result ?? ""} onChange={e => setEditDraft(d => ({ ...d, expected_result: e.target.value }))} />
+                      : tc.expected_result}
+                  </td>
                   <td className="px-4 py-3 text-slate-600 max-w-[160px]">
                     {rs?.actual
                       ? <span className={rs.status === "passed" ? "text-emerald-600" : "text-red-600"}>{rs.actual}</span>
@@ -315,6 +406,17 @@ export default function TestCaseTable({ markdown, testCases, scripts, url }: Tes
                     {rs?.status === "passed" && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
                     {rs?.status === "failed"  && <XCircle className="w-4 h-4 text-red-500" />}
                     {!rs && "-"}
+                  </td>
+                  {/* Edit button */}
+                  <td className="px-2 py-3">
+                    {isEditing ? (
+                      <div className="flex gap-1">
+                        <button type="button" onClick={saveEdit} className="p-1 rounded hover:bg-emerald-50 text-emerald-600 transition" title="Save"><Check className="w-3.5 h-3.5" /></button>
+                        <button type="button" onClick={() => setEditIdx(null)} className="p-1 rounded hover:bg-red-50 text-red-400 transition" title="Cancel"><XIcon className="w-3.5 h-3.5" /></button>
+                      </div>
+                    ) : (
+                      <button type="button" onClick={startEdit} className="p-1 rounded hover:bg-slate-100 text-slate-300 hover:text-slate-500 transition" title="Edit row"><Pencil className="w-3.5 h-3.5" /></button>
+                    )}
                   </td>
                   {isLocal && scripts?.length ? (
                     <td className="px-2 py-3">

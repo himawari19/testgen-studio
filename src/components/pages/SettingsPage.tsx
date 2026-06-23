@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import AISettings from "@/components/AISettings";
-import { Keyboard, FileText } from "lucide-react";
+import TeamSettings from "@/components/TeamSettings";
+import { Keyboard, FileText, Users } from "lucide-react";
 import toast from "react-hot-toast";
 import { ModelsResponse } from "@/types";
 
@@ -110,6 +111,18 @@ export default function SettingsPage({
               Save Prompt
             </button>
           </div>
+        </div>
+
+        {/* Team Workspace */}
+        <div className="card p-4 sm:p-6">
+          <div className="flex items-center gap-2 mb-1">
+            <Users className="w-4 h-4 text-slate-500" />
+            <h3 className="text-base font-semibold text-slate-800">Team Workspace</h3>
+          </div>
+          <p className="text-sm text-slate-500 mb-4">
+            Share test history with your team. All members see each other&apos;s generated results.
+          </p>
+          <TeamSettings />
         </div>
 
         {/* Keyboard Shortcuts */}

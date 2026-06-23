@@ -2,24 +2,21 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Toaster } from "react-hot-toast";
 import Providers from "@/components/Providers";
-import { auth } from "@/auth";
 
 export const metadata: Metadata = {
   title: "TestGen Studio - Build smarter test cases and automation scripts with AI",
   description: "Build smarter test cases and automation scripts with AI.",
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  // Read session server-side so the client provider has it immediately (no /api/auth/session round-trip on mount)
-  const session = await auth();
   return (
     <html lang="en" className="h-full">
       <body className="h-full">
-        <Providers session={session}>
+        <Providers>
         <Toaster
           position="top-right"
           toastOptions={{
