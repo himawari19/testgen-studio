@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import {
   History,
@@ -155,21 +155,16 @@ export default function HistoryPage({ onRerun }: HistoryPageProps) {
     });
   };
 
-  // Compare each item against the most recent older run for the same URL
-  const diffs = useMemo(() => {
-    const sorted = [...history].sort((a, b) => a.created_at.localeCompare(b.created_at));
-    const prev = new Map<string, HistoryItem>();
-    const result = new Map<string, { cases: number; scripts: number }>();
-    for (const item of sorted) {
-      const p = prev.get(item.url);
-      if (p) result.set(item.id, {
-        cases:   (item.test_cases_count ?? 0) - (p.test_cases_count ?? 0),
-        scripts: item.scripts_count - p.scripts_count,
-      });
-      prev.set(item.url, item);
-    }
-    return result;
-  }, [history]);
+  const urlPrev = new Map<string, HistoryItem>();
+  const diffs = new Map<string, { cases: number; scripts: number }>();
+  for (const item of [...history].sort((a, b) => a.created_at.localeCompare(b.created_at))) {
+    const p = urlPrev.get(item.url);
+    if (p) diffs.set(item.id, {
+      cases:   (item.test_cases_count ?? 0) - (p.test_cases_count ?? 0),
+      scripts: item.scripts_count - p.scripts_count,
+    });
+    urlPrev.set(item.url, item);
+  }
 
   const formatDate = (iso: string) => {
     const d = new Date(iso);
