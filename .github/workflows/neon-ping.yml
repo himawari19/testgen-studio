@@ -1,4 +1,4 @@
-name: Neon DB Ping
+name: Keep Services Alive
 
 on:
   schedule:
@@ -9,5 +9,9 @@ jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Keep Neon awake
+      - name: Ping Neon (via app health)
         run: curl -fsS --max-time 20 "${{ secrets.APP_URL }}/api/health" || true
+
+      - name: Ping Railway crawler
+        if: ${{ secrets.CRAWLER_URL != '' }}
+        run: curl -fsS --max-time 20 "${{ secrets.CRAWLER_URL }}/health" || true

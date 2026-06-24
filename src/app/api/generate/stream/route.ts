@@ -266,7 +266,7 @@ export async function POST(request: Request) {
             const processTestCase = async (tc: any) => {
               sendEvent('formatting', `Generating script ${tc.number}/${testCases.length}...`);
               const script = await generateScriptForTestCase(
-                pageData, effectiveContext, p, ai_model || '', apiKey,
+                pageData, effectiveContext, p, stage1Model, apiKey,
                 tc, framework || 'playwright', language || 'typescript',
                 publicBaseUrl
               );

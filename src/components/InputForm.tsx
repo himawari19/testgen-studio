@@ -115,6 +115,13 @@ export default function InputForm({
     ? (VISION_CAPABLE[aiProvider.toLowerCase()]?.(aiModel.toLowerCase()) ?? false)
     : false;
 
+  const isLocalUrl = (() => {
+    try {
+      const { hostname } = new URL(ensureProtocol(url));
+      return hostname === 'localhost' || /^127\.|^192\.168\.|^10\.|^172\.(1[6-9]|2\d|3[01])\./.test(hostname);
+    } catch { return false; }
+  })();
+
   const MODES = [
     { id: 'quick',     label: 'Quick',    sub: '~10 tests',  title: 'Essential coverage - fast results' },
     { id: 'standard',  label: 'Standard', sub: '~30 tests',  title: 'Balanced coverage for most flows' },
@@ -256,6 +263,26 @@ export default function InputForm({
       const routerPublic = aiProvider === '9router-public'
         ? JSON.parse(localStorage.getItem('9router_public') || '{}')
         : {};
+
+      const requestBody = {
+        url: singleUrl,
+        user_context: finalContext,
+        ai_provider: aiProvider,
+        ai_model: aiModel,
+        api_key: getApiKey(aiProvider) ? '[REDACTED]' : '(none)',
+        framework,
+        language,
+        fast_mode: fastMode,
+        generation_mode: generationMode,
+        output_mode: outputMode,
+        crawl_mode: crawlMode,
+        nine_router_public_url: routerPublic.url || '',
+        nine_router_public_key: routerPublic.key ? '[REDACTED]' : '(none)',
+        ...(auth ? { auth: { ...auth, password: auth.password ? '[REDACTED]' : undefined } } : {}),
+      };
+      console.group(`[TestGen] Generate → ${singleUrl}`);
+      console.log('Request:', requestBody);
+
       const response = await fetch(`${API_URL}/api/generate/stream`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -278,9 +305,14 @@ export default function InputForm({
         signal: abortController.signal,
       });
 
+      console.log(`Response: HTTP ${response.status} ${response.statusText}`);
+
       if (!response.ok) {
         const errData = await response.json().catch(() => ({ detail: "Request failed" }));
-        throw new Error(errData.detail || `HTTP ${response.status}`);
+        const msg = errData.detail || `HTTP ${response.status}`;
+        console.error('[TestGen] HTTP error:', response.status, errData);
+        console.groupEnd();
+        throw new Error(msg);
       }
 
       const reader = response.body?.getReader();
@@ -300,12 +332,26 @@ export default function InputForm({
           if (!line.startsWith("data: ")) continue;
           try {
             const event = JSON.parse(line.slice(6));
-            if (event.step === "error") { onError(event.message); return false; }
-            if (event.step === "complete") { onResults(event.result); return true; }
+            if (event.step === "error") {
+              console.error('[TestGen] SSE error:', event.message, event);
+              console.groupEnd();
+              onError(event.message);
+              return false;
+            }
+            if (event.step === "complete") {
+              console.log('[TestGen] Complete:', { test_cases: event.result?.test_cases?.length, scripts: event.result?.scripts?.length });
+              console.groupEnd();
+              onResults(event.result);
+              return true;
+            }
+            console.log(`[TestGen] ${event.step}:`, event.message);
             onStatus(event.message, event.step);
-          } catch { /* skip malformed */ }
+          } catch (parseErr) {
+            console.warn('[TestGen] Malformed SSE line:', line, parseErr);
+          }
         }
       }
+      console.groupEnd();
       return false;
     };
 
@@ -323,6 +369,7 @@ export default function InputForm({
       onStatus("Generation complete!", "complete");
     } catch (err: any) {
       if (err.name === "AbortError") return;
+      console.error('[TestGen] Unhandled error:', err);
       onError(err.message || "An unexpected error occurred. Please try again.");
     } finally {
       onLoading(false);
@@ -555,6 +602,9 @@ export default function InputForm({
         </div>
         {crawlMode === 'vision' && canUseVision && (
           <p className="mt-1.5 text-xs text-indigo-500">Vision AI requires the Playwright crawler service (CRAWLER_URL) to take screenshots.</p>
+        )}
+        {isLocalUrl && crawlMode !== 'static' && (
+          <p className="mt-1.5 text-xs text-amber-600">Playwright and Vision AI run on a remote server and cannot reach local/private IP addresses. Use Static mode, or test with a publicly accessible URL.</p>
         )}
       </div>
 

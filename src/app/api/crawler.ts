@@ -144,7 +144,7 @@ async function crawlPageWithService(targetURL: string, auth: AuthConfig | undefi
   const res = await axios.post(`${serviceUrl}/crawl`, { url: targetURL, auth }, {
     headers,
     timeout: 60000,
-    validateStatus: (s) => s < 500,
+    validateStatus: () => true,
   });
   if (res.status === 429 && res.data?.queued) {
     const err: any = new Error('Crawler at capacity');
@@ -168,7 +168,7 @@ export async function screenshotPage(targetURL: string, auth: AuthConfig | undef
   const res = await axios.post(`${serviceUrl}/screenshot`, { url: targetURL, auth }, {
     headers,
     timeout: 60000,
-    validateStatus: (s) => s < 500,
+    validateStatus: () => true,
   });
   if (res.status === 429 && res.data?.queued) {
     const err: any = new Error('Crawler at capacity');

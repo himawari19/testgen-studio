@@ -337,7 +337,7 @@ export default function TestCaseTable({ markdown, testCases, scripts }: TestCase
               const isEditing = editIdx === i;
               const startEdit = () => { setEditIdx(i); setEditDraft({ name: tc.name, pre_condition: tc.pre_condition, test_steps: tc.test_steps, expected_result: tc.expected_result }); };
               const saveEdit = () => {
-                setCases(prev => prev.map((c, j) => j === i ? { ...c, ...editDraft, test_steps: typeof editDraft.test_steps === "string" ? splitSteps(editDraft.test_steps as any) : editDraft.test_steps ?? c.test_steps } : c));
+                setCases(prev => prev.map(c => c.number === tc.number ? { ...c, ...editDraft, test_steps: typeof editDraft.test_steps === "string" ? splitSteps(editDraft.test_steps as any) : editDraft.test_steps ?? c.test_steps } : c));
                 setEditIdx(null);
               };
               return (

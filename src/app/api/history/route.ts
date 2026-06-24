@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getDB, ensureSchema } from '../db';
 import { auth } from '@/auth';
-import fs from 'fs';
-import path from 'path';
 
 async function getTeamUserIds(sql: any, userId: string): Promise<string[]> {
   try {
@@ -80,9 +78,6 @@ export async function DELETE() {
 
     await ensureSchema();
     const sql = getDB();
-    // Nuke entire results folder - all generated files live there
-    const resultsDir = path.resolve(process.cwd(), 'tests/results');
-    try { await fs.promises.rm(resultsDir, { recursive: true, force: true }); } catch {}
     await sql`DELETE FROM history WHERE user_id = ${userId}`;
     return NextResponse.json({
       success: true,
